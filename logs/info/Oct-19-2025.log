@@ -1,0 +1,79 @@
+error: Oct-19-2025 00:13:25: 	Error - ValidationError Mobile number must be valid and between 10 to 15 numbers
+info: Oct-19-2025 00:13:25: 	[0mPOST /api/vendors/create [33m422[0m 16.564 ms - 85[0m
+
+error: Oct-19-2025 00:13:59: 	Error - ValidationError Mobile number must be valid and between 10 to 15 numbers
+info: Oct-19-2025 00:13:59: 	[0mPOST /api/vendors/create [33m422[0m 4.909 ms - 85[0m
+
+error: Oct-19-2025 00:21:35: 	Error - ValidationError Mobile number must be valid and between 10 to 15 numbers
+info: Oct-19-2025 00:21:35: 	[0mPOST /api/vendors/create [33m422[0m 29.817 ms - 85[0m
+
+error: Oct-19-2025 00:22:27: 	Error - ValidationError Mobile number must be valid and between 10 to 15 numbers
+info: Oct-19-2025 00:22:27: 	[0mPOST /api/vendors/create [33m422[0m 11.987 ms - 85[0m
+
+error: Oct-19-2025 00:22:51: 	Error - ValidationError Mobile number must be valid and between 10 to 15 numbers
+info: Oct-19-2025 00:22:51: 	[0mPOST /api/vendors/create [33m422[0m 13.951 ms - 85[0m
+
+error: Oct-19-2025 00:24:45: 	Error - ValidationError "mobNo" is required
+info: Oct-19-2025 00:24:45: 	[0mPOST /api/vendors/create [33m422[0m 14.197 ms - 56[0m
+
+error: Oct-19-2025 00:25:00: 	Error - ValidationError Mobile number must be exactly 10 digits
+info: Oct-19-2025 00:25:00: 	[0mPOST /api/vendors/create [33m422[0m 5.672 ms - 78[0m
+
+error: Oct-19-2025 00:25:06: 	Error - ValidationError Shop name is required and must be between 2-100 characters
+info: Oct-19-2025 00:25:06: 	[0mPOST /api/vendors/create [33m422[0m 2.000 ms - 87[0m
+
+error: Oct-19-2025 00:27:54: 	Error - ValidationError Shop address is required and must be between 10-500 characters
+info: Oct-19-2025 00:27:54: 	[0mPOST /api/vendors/create [33m422[0m 22.731 ms - 91[0m
+
+error: Oct-19-2025 00:28:14: 	Error - ValidationError You must give consent to proceed
+info: Oct-19-2025 00:28:14: 	[0mPOST /api/vendors/create [33m422[0m 11.464 ms - 61[0m
+
+info: Oct-19-2025 00:29:01: 	Vendor created: [object Object]
+info: Oct-19-2025 00:29:01: 	[0mPOST /api/vendors/create [32m200[0m 167.344 ms - 731[0m
+
+info: Oct-19-2025 00:31:35: 	Vendor created: [object Object]
+info: Oct-19-2025 00:31:35: 	[0mPOST /api/vendors/create [32m200[0m 150.819 ms - 796[0m
+
+info: Oct-19-2025 00:50:05: 	[0mPOST /api/vendors/create [31m500[0m 59.294 ms - 1383[0m
+
+info: Oct-19-2025 00:50:54: 	[0mPOST /api/vendors/create [31m500[0m 27.470 ms - 1383[0m
+
+info: Oct-19-2025 00:51:55: 	[0mPOST /api/vendors/create [31m500[0m 36.975 ms - 1383[0m
+
+info: Oct-19-2025 00:53:19: 	[0mPOST /api/vendors/create [31m500[0m 105.529 ms - 69[0m
+
+info: Oct-19-2025 00:54:01: 	[0mPOST /api/vendors/create [32m200[0m 225.322 ms - 1278[0m
+
+info: Oct-19-2025 01:26:18: 	[0mPOST /api/delivery-partner/create-deliver-partner [31m500[0m 39.302 ms - 1383[0m
+
+info: Oct-19-2025 01:28:15: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 100.560 ms - 28[0m
+
+info: Oct-19-2025 01:30:28: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 95.281 ms - 28[0m
+
+info: Oct-19-2025 01:31:37: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 82.595 ms - 28[0m
+
+error: Oct-19-2025 01:33:25: 	Delivery Partner creation error: User validation failed: gender: `Male` is not a valid enum value for path `gender`.
+info: Oct-19-2025 01:33:25: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 111.206 ms - 80[0m
+
+info: Oct-19-2025 01:33:50: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 154.425 ms - 813[0m
+
+info: Oct-19-2025 01:35:54: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 147.644 ms - 813[0m
+
+info: Oct-19-2025 01:42:44: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 121.647 ms - 26[0m
+
+info: Oct-19-2025 01:43:41: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 104.591 ms - 26[0m
+
+info: Oct-19-2025 01:44:43: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 184.871 ms - 813[0m
+
+info: Oct-19-2025 01:45:38: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 119.777 ms - 26[0m
+
+info: Oct-19-2025 01:46:46: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 103.698 ms - 26[0m
+
+info: Oct-19-2025 01:48:04: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 115.805 ms - 26[0m
+
+info: Oct-19-2025 01:49:03: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 120.133 ms - 26[0m
+
+info: Oct-19-2025 01:50:00: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 109.474 ms - 26[0m
+
+info: Oct-19-2025 01:54:03: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 114.133 ms - 26[0m
+

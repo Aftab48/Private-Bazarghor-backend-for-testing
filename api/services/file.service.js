@@ -1,0 +1,55 @@
+const fs = require("fs");
+const path = require("path");
+
+const UPLOAD_MODE = process.env.UPLOAD_MODE || "local"; // later can be "s3"
+const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const FileService = {
+  // 🧠 create standardized file object for DB
+  generateFileObject(file) {
+    if (!file) return null;
+    return {
+      nm: file.filename,
+      oriNm: file.originalname,
+      uri:
+        UPLOAD_MODE === "local"
+          ? `/uploads/${file.filename}`
+          : file.path || file.url,
+      mimeType: file.mimetype,
+      size: file.size,
+      sts: 2, // uploaded
+    };
+  },
+
+  // 🧹 delete all uploaded files (used when registration fails)
+  deleteUploadedFiles(files) {
+    try {
+      if (!files) return;
+      Object.keys(files).forEach((key) => {
+        files[key].forEach((f) => {
+          const filePath = path.join(UPLOAD_DIR, f.filename);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        });
+      });
+    } catch (err) {
+      logger.error("Error deleting uploaded files:", err);
+    }
+  },
+
+  // 🧼 delete a single file (used on update)
+  deleteSingleFile(fileName) {
+    try {
+      if (!fileName) return;
+      const filePath = path.join(UPLOAD_DIR, fileName);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (err) {
+      logger.error("Error deleting single file:", err);
+    }
+  },
+};
+
+module.exports = FileService;

@@ -1,0 +1,75 @@
+const JWT = {
+  ADMIN_SECRET: "myjwtadminsecret",
+  USER_SECRET: "myjwtadminsecret",
+  EXPIRES_IN: "24h",
+  REFRESH_EXPIRES_IN: "30d",
+  SECRET: "myjwtsecret",
+  CHANGE_PASSWORD_SUCCESS: 1,
+  PASSWORD_USE_ERROR: 2,
+  PASSWORD_NOT_MATCH: 0,
+};
+const ROLE = {
+  SUPER_ADMIN: "SUPER_ADMIN",
+  ADMIN: "ADMIN",
+  SUB_ADMIN: "SUB_ADMIN",
+  VENDOR: "VENDOR",
+  DELIVERY_PARTNER: "DELIVERY_PARTNER",
+  USER: "USER",
+};
+
+const PLATFORM = {
+  ADMIN: ["ADMIN", "SUPER_ADMIN", "SUB_ADMIN"],
+  DEVICE: ["VENDOR", "DELIVERY", "USER"],
+};
+
+const MODULE = {
+  ADMIN: "admin",
+  DEVICE: "device",
+};
+const LOGIN = {
+  SUCCESS: 0,
+  PASSWORD_WRONG: 3,
+  ACCOUNT_NOT_FOUND: 1,
+  ACCOUNT_NOT_VERIFIED: 2,
+  ACCOUNT_DEACTIVATED: 4,
+};
+
+const OTPTYPE = {
+  SIGNUPOTP: "signupOtp",
+  FORGETPASSOTP: "forgetPassOtp",
+};
+
+const OTP_EXPIRY_TIME = {
+  MINUTE: 2,
+};
+
+const VENDOR_STATUS = {
+  PENDING: 1,
+  APPROVED: 2,
+  DECLINE: 3,
+};
+
+const DELIVERY_PARTNER_STATUS = {
+  PENDING: 1,
+  APPROVED: 2,
+  DECLINE: 3,
+};
+
+const CUSTOMER_STATUS = {
+  PENDING: 1,
+  APPROVED: 2,
+  DECLINE: 3,
+};
+
+module.exports = {
+  JWT,
+  ROLE,
+  PLATFORM,
+  MODULE,
+  LOGIN,
+  OTPTYPE,
+  OTP_EXPIRY_TIME,
+  VENDOR_STATUS,
+  DELIVERY_PARTNER_STATUS,
+  CUSTOMER_STATUS,
+};

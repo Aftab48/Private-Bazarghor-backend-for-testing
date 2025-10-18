@@ -12,42 +12,10 @@ exports.unAuthenticated = (res) => {
 };
 
 exports.successResponse = (data, res) => {
-  return res.status(responseStatusCode.success).json({
+  return res?.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
     data: data,
-  });
-};
-
-exports.createdDocumentResponse = (data, res) => {
-  return res.status(responseStatusCode.create).json({
-    code: RESPONSE_CODE.DEFAULT,
-    message: res.message,
-    data: data,
-  });
-};
-
-exports.emailSendSuccessfully = (res) => {
-  return res.status(responseStatusCode.success).json({
-    code: RESPONSE_CODE.DEFAULT,
-    message: res.message,
-    data: {},
-  });
-};
-
-exports.sendEmailFailed = (res) => {
-  return res.status(responseStatusCode.badRequest).json({
-    code: RESPONSE_CODE.ERROR,
-    message: res.message,
-    data: {},
-  });
-};
-
-exports.emailVerifySuccess = (res) => {
-  return res.status(responseStatusCode.success).json({
-    CODE: RESPONSE_CODE.DEFAULT,
-    MESSAGE: res.message,
-    data: {},
   });
 };
 
@@ -75,14 +43,6 @@ exports.wrongPassword = (res) => {
   });
 };
 
-exports.redirectTo = (data, res) => {
-  return res.status(responseStatusCode.success).json({
-    code: RESPONSE_CODE.REDIRECT,
-    message: res.message,
-    data,
-  });
-};
-
 exports.updateProfileResponse = (data, res) => {
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
@@ -107,6 +67,7 @@ exports.failureResponse = (data, res) => {
     message: data.message ? data.message : data,
   });
 };
+
 exports.badRequest = (data, res) => {
   return res.status(responseStatusCode.validationError).json({
     code: RESPONSE_CODE.ERROR,
@@ -114,6 +75,7 @@ exports.badRequest = (data, res) => {
     data: data,
   });
 };
+
 exports.recordNotFound = (res) => {
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,

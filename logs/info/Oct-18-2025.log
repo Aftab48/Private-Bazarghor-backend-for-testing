@@ -1,0 +1,5 @@
+info: Oct-18-2025 23:47:06: 	[0mPOST /api/vendors/create [31m500[0m 675.998 ms - 91[0m
+
+info: Oct-18-2025 23:47:38: 	Vendor created: [object Object]
+info: Oct-18-2025 23:47:38: 	[0mPOST /api/vendors/create [32m200[0m 164.194 ms - 710[0m
+

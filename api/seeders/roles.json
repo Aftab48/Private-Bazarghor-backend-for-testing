@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Admin",
+    "code": "ADMIN",
+    "weight": 1,
+    "canDel": false
+  },
+  {
+    "name": "Vendor",
+    "code": "VENDOR",
+    "weight": 3,
+    "canDel": false
+  },
+  {
+    "name": "Delivery_Partner",
+    "code": "DELIVERY_PARTNER",
+    "weight": 2,
+    "canDel": false
+  }
+  ,{
+    "name": "Customer",
+    "code": "CUSTOMER",
+    "weight": 4,
+    "canDel": false
+  }
+]
