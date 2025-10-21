@@ -3,26 +3,18 @@ const rolesData = require("../seeders/roles.json");
 const { catchAsync } = require("../helpers/utils/catchAsync");
 
 const roleSeeder = catchAsync(async () => {
-  console.log("⏳ Starting role seeding...");
-  const codes = rolesData.map((r) => r.code);
-  const existingCount = await Role.countDocuments({ code: { $in: codes } });
-
-  if (existingCount === rolesData.length) {
-    console.log("✅ All roles already seeded — skipping seeder.");
-    return;
-  }
-
+  logger.info("⏳ Checking roles in database...");
   for (const role of rolesData) {
-    const exists = await Role.findOne({ code: role.code });
-    if (!exists) {
+    const existingRole = await Role.findOne({ code: role.code });
+    if (!existingRole) {
       await Role.create(role);
-      console.log(`✅ Role created: ${role.code}`);
+      logger.info(`✅ Added role: ${role.name}`);
     } else {
-      console.log(`➡️ Role already exists: ${role.code}`);
+      logger.warn(`Role already exists: ${role.name} (skipped)`);
     }
   }
 
-  console.log("🎉 Role seeding completed!");
+  console.log("🎯 Role seeding completed successfully!");
 });
 
 module.exports = roleSeeder;

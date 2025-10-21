@@ -77,3 +77,154 @@ info: Oct-19-2025 01:50:00: 	[0mPOST /api/delivery-partner/create-deliver-partn
 
 info: Oct-19-2025 01:54:03: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 114.133 ms - 26[0m
 
+info: Oct-19-2025 15:53:36: 	[0mPOST /api/vendors/create-vendor [31m500[0m 36.062 ms - 1383[0m
+
+info: Oct-19-2025 16:06:29: 	[0mPOST /api/vendors/create-vendor [31m500[0m 37.577 ms - 1383[0m
+
+info: Oct-19-2025 16:10:13: 	[0mPOST /api/vendors/create-vendor [31m500[0m 17.557 ms - 1383[0m
+
+info: Oct-19-2025 16:13:11: 	[0mPOST /api/vendors/create-vendor [31m500[0m 15.982 ms - 1383[0m
+
+info: Oct-19-2025 16:14:57: 	[0mPOST /api/vendors/create-vendor [31m500[0m 17.835 ms - 1383[0m
+
+info: Oct-19-2025 16:24:32: 	[0mPOST /api/vendors/create-vendor [32m200[0m 228.614 ms - 1097[0m
+
+info: Oct-19-2025 16:26:39: 	[0mPOST /api/vendors/create-vendor [32m200[0m 193.220 ms - 1097[0m
+
+info: Oct-19-2025 16:27:37: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 112.078 ms - 26[0m
+
+info: Oct-19-2025 16:28:09: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 205.749 ms - 1138[0m
+
+info: Oct-19-2025 16:49:41: 	[0mPOST //api/delivery-partner/create-deliver-partner [33m404[0m 6.380 ms - 184[0m
+
+info: Oct-19-2025 16:49:47: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 72.697 ms - 26[0m
+
+info: Oct-19-2025 16:51:39: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 73.362 ms - 26[0m
+
+info: Oct-19-2025 16:52:07: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 68.170 ms - 26[0m
+
+info: Oct-19-2025 16:54:56: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 77.991 ms - 26[0m
+
+info: Oct-19-2025 16:56:05: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 72.413 ms - 26[0m
+
+error: Oct-19-2025 17:01:19: 	Delivery Partner creation error: value is not defined
+info: Oct-19-2025 17:01:19: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 10.392 ms - 49[0m
+
+info: Oct-19-2025 17:01:36: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 215.815 ms - 26[0m
+
+info: Oct-19-2025 17:03:32: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 89.837 ms - 26[0m
+
+info: Oct-19-2025 17:03:49: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 69.428 ms - 26[0m
+
+info: Oct-19-2025 17:04:48: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 79.673 ms - 26[0m
+
+info: Oct-19-2025 17:07:06: 	Vehicle number already registered:
+info: Oct-19-2025 17:07:06: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 70.946 ms - 26[0m
+
+info: Oct-19-2025 17:08:42: 	Vehicle number already registered:
+info: Oct-19-2025 17:08:42: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 344.376 ms - 26[0m
+
+info: Oct-19-2025 17:09:42: 	Vehicle number already registered:
+info: Oct-19-2025 17:09:42: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 77.319 ms - 46[0m
+
+info: Oct-19-2025 17:10:15: 	Vehicle number already registered:
+info: Oct-19-2025 17:10:15: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 72.208 ms - 92[0m
+
+info: Oct-19-2025 17:10:51: 	Vehicle number already registered:
+info: Oct-19-2025 17:10:51: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 452.033 ms - 92[0m
+
+info: Oct-19-2025 17:10:59: 	Driver license number already registered:
+info: Oct-19-2025 17:10:59: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 107.381 ms - 97[0m
+
+info: Oct-19-2025 17:11:05: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 430.015 ms - 1138[0m
+
+info: Oct-19-2025 17:13:09: 	Registration conflict fields:
+info: Oct-19-2025 17:13:09: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 39.299 ms - 119[0m
+
+info: Oct-19-2025 17:13:19: 	Registration conflict fields:
+info: Oct-19-2025 17:13:19: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 38.076 ms - 311[0m
+
+info: Oct-19-2025 17:13:34: 	Registration conflict fields:
+info: Oct-19-2025 17:13:34: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 31.957 ms - 224[0m
+
+info: Oct-19-2025 17:13:47: 	Registration conflict fields:
+info: Oct-19-2025 17:13:47: 	[0mPOST /api/delivery-partner/create-deliver-partner [33m422[0m 32.307 ms - 135[0m
+
+info: Oct-19-2025 17:13:55: 	[0mPOST /api/delivery-partner/create-deliver-partner [32m200[0m 340.862 ms - 1138[0m
+
+info: Oct-19-2025 17:17:47: 	Vendor registration conflict fields:
+info: Oct-19-2025 17:17:47: 	[0mPOST /api/vendors/create-vendor [33m422[0m 52.199 ms - 119[0m
+
+info: Oct-19-2025 17:17:53: 	Vendor registration conflict fields:
+info: Oct-19-2025 17:17:53: 	[0mPOST /api/vendors/create-vendor [33m422[0m 58.315 ms - 119[0m
+
+info: Oct-19-2025 17:20:57: 	Vendor registration conflict fields:
+info: Oct-19-2025 17:20:57: 	[0mPOST /api/vendors/create-vendor [33m422[0m 101.951 ms - 119[0m
+
+info: Oct-19-2025 17:22:34: 	Vendor registration conflict fields:
+info: Oct-19-2025 17:22:34: 	[0mPOST /api/vendors/create-vendor [33m422[0m 347.486 ms - 119[0m
+
+info: Oct-19-2025 17:22:40: 	[0mPOST /api/vendors/create-vendor [32m200[0m 196.204 ms - 1097[0m
+
+info: Oct-19-2025 23:39:46: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 47.561 ms - 26[0m
+
+info: Oct-19-2025 23:42:26: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 57.537 ms - 26[0m
+
+info: Oct-19-2025 23:43:12: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 48.201 ms - 26[0m
+
+info: Oct-19-2025 23:44:03: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 48.769 ms - 26[0m
+
+info: Oct-19-2025 23:44:37: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 41.884 ms - 26[0m
+
+info: Oct-19-2025 23:45:07: 	Registration OTP sent to 8909862423: 123456
+info: Oct-19-2025 23:45:07: 	[0mPOST /api/otp/send-otp-registration [32m200[0m 74.143 ms - 173[0m
+
+info: Oct-19-2025 23:45:55: 	[0mPOST /api/otp/verify-otp-registration [31m500[0m 4.742 ms - 158[0m
+
+info: Oct-19-2025 23:46:12: 	Mobile number 8909862423 verified for registration
+info: Oct-19-2025 23:46:12: 	[0mPOST /api/otp/verify-otp-registration [32m200[0m 76.756 ms - 136[0m
+
+info: Oct-19-2025 23:48:04: 	[0mPOST /api/vendors/create-vendor [33m422[0m 65.780 ms - 26[0m
+
+info: Oct-19-2025 23:49:27: 	[0mPOST /api/vendors/create-vendor [33m422[0m 64.328 ms - 26[0m
+
+error: Oct-19-2025 23:50:19: 	68f52aab21fe4629b54ec4c8
+info: Oct-19-2025 23:50:19: 	[0mPOST /api/vendors/create-vendor [33m422[0m 48.320 ms - 26[0m
+
+error: Oct-19-2025 23:50:42: 	68f52aab21fe4629b54ec4c8
+error: Oct-19-2025 23:50:42: 	null
+info: Oct-19-2025 23:50:42: 	[0mPOST /api/vendors/create-vendor [33m422[0m 54.313 ms - 26[0m
+
+error: Oct-19-2025 23:51:00: 	68f52aab21fe4629b54ec4c8
+info: Oct-19-2025 23:51:02: 	[0mPOST /api/vendors/create-vendor [31m500[0m 1803.958 ms - 85[0m
+
+error: Oct-19-2025 23:51:14: 	68f52aab21fe4629b54ec4c8
+error: Oct-19-2025 23:51:14: 	undefined
+info: Oct-19-2025 23:51:14: 	[0mPOST /api/vendors/create-vendor [33m422[0m 78.192 ms - 26[0m
+
+info: Oct-19-2025 23:51:39: 	[0mPOST /api/otp/verify-otp-registration [32m200[0m 60.696 ms - 28[0m
+
+info: Oct-19-2025 23:51:43: 	[0mPOST /api/otp/send-otp-registration [33m422[0m 31.638 ms - 26[0m
+
+info: Oct-19-2025 23:53:49: 	Registration OTP sent to 8909862423: 123456
+info: Oct-19-2025 23:53:49: 	[0mPOST /api/otp/send-otp-registration [32m200[0m 93.298 ms - 173[0m
+
+info: Oct-19-2025 23:54:01: 	Mobile number 8909862423 verified for registration
+info: Oct-19-2025 23:54:01: 	[0mPOST /api/otp/verify-otp-registration [32m200[0m 83.946 ms - 136[0m
+
+error: Oct-19-2025 23:54:05: 	68f52aab21fe4629b54ec4c8
+error: Oct-19-2025 23:54:06: 	undefined
+info: Oct-19-2025 23:54:06: 	[0mPOST /api/vendors/create-vendor [33m422[0m 47.994 ms - 26[0m
+
+error: Oct-19-2025 23:58:10: 	undefined
+info: Oct-19-2025 23:58:10: 	[0mPOST /api/vendors/create-vendor [33m422[0m 54.788 ms - 26[0m
+
+info: Oct-20-2025 00:02:32: 	Registration OTP sent to 8909862423: 123456
+info: Oct-20-2025 00:02:32: 	[0mPOST /api/otp/send-otp-registration [32m200[0m 117.495 ms - 173[0m
+
+info: Oct-20-2025 00:02:41: 	Mobile number 8909862423 verified for registration
+info: Oct-20-2025 00:02:41: 	[0mPOST /api/otp/verify-otp-registration [32m200[0m 78.504 ms - 136[0m
+
+error: Oct-20-2025 00:02:47: 	undefined
+info: Oct-20-2025 00:02:47: 	[0mPOST /api/vendors/create-vendor [33m422[0m 50.273 ms - 26[0m
+

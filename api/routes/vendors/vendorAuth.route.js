@@ -1,10 +1,20 @@
 const express = require("express");
 const router = express.Router();
+const { ROLE } = require("../../../config/constants/authConstant");
 const {
   createVendorController,
-} = require("../../controllers/vendors/vendor.auth");
+  VendorController,
+  updateVendorController,
+} = require("../../controllers/vendors/vendor.controller");
+const { logoutUser } = require("../../services/auth");
+const { authMiddleware } = require("../../middlewares/auth.middleware");
+const {
+  sendOTP,
+  verifyOTPAndLogin,
+  resendOTP,
+} = require("../../services/otp.service");
 const validate = require("../../middlewares/validate");
-const uploadVendorFiles = require("../../middlewares/upload.middleware");
+const { uploadVendorFiles } = require("../../middlewares/upload.middleware");
 const {
   registerVendor,
 } = require("../../helpers/utils/validations/auth/index");
@@ -15,5 +25,18 @@ router.post(
   uploadVendorFiles,
   createVendorController
 );
+
+router.get("/profile", authMiddleware([ROLE.VENDOR]), VendorController);
+router.put(
+  "/update-profile",
+  authMiddleware([ROLE.VENDOR]),
+  uploadVendorFiles,
+  updateVendorController
+);
+
+router.post("/logout", authMiddleware([]), logoutUser);
+router.post("/login/send-otp", sendOTP);
+router.post("/login/verify", verifyOTPAndLogin);
+router.post("/login/resend", resendOTP);
 
 module.exports = router;

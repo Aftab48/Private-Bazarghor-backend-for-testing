@@ -3,7 +3,8 @@ const {
   RESPONSE_CODE,
 } = require("../../../config/constants/responseCodeConstant");
 
-exports.unAuthenticated = (res) => {
+exports.unAuthenticated = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.unAuthorized).json({
     code: RESPONSE_CODE.UNAUTHENTICATED,
     message: res.message,
@@ -11,23 +12,25 @@ exports.unAuthenticated = (res) => {
   });
 };
 
-exports.successResponse = (data, res) => {
-  return res?.status(responseStatusCode.success).json({
+exports.successResponse = (data, res, message) => {
+  return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
-    message: res.message,
+    message: message || res.message,
     data: data,
   });
 };
 
-exports.linkInvalid = (res) => {
-  return res.status(responseStatusCode.validationError).json({
+exports.linkInvalid = (res, message) => {
+  if (message) res.message = message;
+  return res.status(responseStatusCode?.validationError).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
     data: {},
   });
 };
 
-exports.changePasswordResponse = (res) => {
+exports.changePasswordResponse = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
@@ -35,7 +38,8 @@ exports.changePasswordResponse = (res) => {
   });
 };
 
-exports.wrongPassword = (res) => {
+exports.wrongPassword = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
@@ -43,7 +47,8 @@ exports.wrongPassword = (res) => {
   });
 };
 
-exports.updateProfileResponse = (data, res) => {
+exports.updateProfileResponse = (data, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
@@ -68,7 +73,8 @@ exports.failureResponse = (data, res) => {
   });
 };
 
-exports.badRequest = (data, res) => {
+exports.badRequest = (data, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.validationError).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
@@ -76,14 +82,16 @@ exports.badRequest = (data, res) => {
   });
 };
 
-exports.recordNotFound = (res) => {
+exports.recordNotFound = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
     data: {},
   });
 };
-exports.insufficientParameters = (res) => {
+exports.insufficientParameters = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.badRequest).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
@@ -206,7 +214,8 @@ exports.loginApiUserFailed = (res) => {
   });
 };
 
-exports.updateDocumentResponse = (data, res) => {
+exports.updateDocumentResponse = (data, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
@@ -214,21 +223,24 @@ exports.updateDocumentResponse = (data, res) => {
   });
 };
 
-exports.accountNotVerified = (res) => {
+exports.accountNotVerified = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.NOT_VERIFIED,
     message: res.message,
   });
 };
 
-exports.credentialsExists = (res) => {
+exports.credentialsExists = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.duplicateRecord).json({
     code: RESPONSE_CODE.DUPLICATE,
     message: res.message,
   });
 };
 
-exports.internalServerError = (res) => {
+exports.internalServerError = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.internalServerError).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,

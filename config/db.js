@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { runSeeders } = require("../api/seeders/");
+const runSeeders = require("../api/seeders/index");
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URL, {

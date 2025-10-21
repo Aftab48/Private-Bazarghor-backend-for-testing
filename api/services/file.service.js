@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const UPLOAD_MODE = process.env.UPLOAD_MODE || "local"; // later can be "s3"
+const UPLOAD_MODE = process.env.UPLOAD_MODE || "local";
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -9,7 +9,6 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 const FileService = {
-  // 🧠 create standardized file object for DB
   generateFileObject(file) {
     if (!file) return null;
     return {
@@ -25,7 +24,6 @@ const FileService = {
     };
   },
 
-  // 🧹 delete all uploaded files (used when registration fails)
   deleteUploadedFiles(files) {
     try {
       if (!files) return;
@@ -40,7 +38,6 @@ const FileService = {
     }
   },
 
-  // 🧼 delete a single file (used on update)
   deleteSingleFile(fileName) {
     try {
       if (!fileName) return;

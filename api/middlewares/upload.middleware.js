@@ -22,11 +22,15 @@ const storage = multer.diskStorage({
 // for now: local upload, later you can switch to s3/cloudinary easily
 const upload = multer({ storage });
 
-// ✅ Middleware to handle both profile and shop pictures
+// ✅ Middleware to handle vendor files (profile and shop pictures)
 const uploadVendorFiles = upload.fields([
   { name: "profilePicture", maxCount: 1 },
   { name: "storePicture", maxCount: 1 },
+]);
+
+// ✅ Middleware to handle delivery partner files (vehicle pictures only)
+const uploadDeliveryPartnerFiles = upload.fields([
   { name: "vehiclePictures", maxCount: 2 },
 ]);
 
-module.exports = uploadVendorFiles;
+module.exports = { uploadVendorFiles, uploadDeliveryPartnerFiles };

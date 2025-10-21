@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 global.utils = utils;
 global.logger = require("./api/helpers/utils/logger");
-app.use(logger.morganInstance);
+app.use(global.logger.morganInstance);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -21,11 +21,14 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Import routes
 const vendorRoutes = require("./api/routes/vendors/vendorAuth.route");
-const deliveryPartner = require("./api/routes/deliveryPartner/deliveryPartnerRoutes");
+const deliveryPartner = require("./api/routes/deliveryPartner/deliveryPartnerAuth.route");
+const otpRoutes = require("./api/routes/otp.route");
+// const customerRoutes = require("./api/routes/customers/customerAuth.route");
 
 // Use routes
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/delivery-partner", deliveryPartner);
+app.use("/api/otp", otpRoutes);
 
 app.use(
   router.get(
@@ -38,5 +41,5 @@ app.use(
 );
 
 server.listen(process.env.PORT, () => {
-  console.log(`server started at ${process.env.PORT} ✅`);
+  logger.info(`server started at ${process.env.PORT} ✅`);
 });

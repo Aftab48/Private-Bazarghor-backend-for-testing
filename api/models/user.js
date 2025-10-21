@@ -4,6 +4,7 @@ const Schema = mongoose.Schema;
 const bcrypt = require("bcrypt");
 const mongoosePaginate = require("mongoose-paginate-v2");
 var idValidator = require("mongoose-id-validator");
+const _ = require("lodash");
 const { fileSchema } = require("../helpers/utils/commonSchema");
 
 const myCustomLabels = {
@@ -32,10 +33,19 @@ const schema = new Schema(
       code: String,
       expireTime: Date,
     },
+    tempRegister: {
+      type: Boolean,
+      default: false,
+    },
+    mobVerifiedAt: {
+      type: Date,
+      default: null,
+    },
     resetPassword: {
       code: String,
       expireTime: Date,
     },
+
     customFields: { type: Object },
     mobVerifiedAt: { type: Date }, // Mobile no verified date (ISO format)
     passwords: [
@@ -56,7 +66,9 @@ const schema = new Schema(
       {
         roleId: {
           type: Schema.Types.ObjectId,
-          index: true,
+        },
+        code: {
+          type: String,
         },
       },
     ],
@@ -109,14 +121,24 @@ const schema = new Schema(
       // ref: "file"
     },
 
-    status: { type: Number }, // for Employer :: 1 = Pending 2 = Approved 3 = Decline
+    status: { type: Number },
     profilePicture: fileSchema,
-    storePicture: fileSchema,
-    vehicalpictures: fileSchema,
+
+    vehicleDetails: {
+      vehicleNo: { type: String },
+      driverLicenseNo: { type: String },
+      vehiclePictures: { type: [fileSchema], default: [] },
+    },
+    storeDetails: {
+      storeName: { type: String },
+      storeAddress: { type: String },
+      storePictures: { type: [fileSchema], default: [] },
+    },
     termsAndCondition: { type: Boolean, default: false },
     approvalStatus: { type: Number },
     consentAgree: { type: Boolean, default: false },
     isPrimaryAdmin: { type: Boolean, default: false },
+    tempRegistration: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -132,7 +154,7 @@ schema.pre("save", async function (next) {
       this?.lastName || ""
     }`;
   }
-  if (this.passwords.length) {
+  if (this.passwords && this.passwords.length > 0) {
     const pass = await bcrypt.hash(this.passwords[0].pass, 8);
     const obj = {
       pass: pass,

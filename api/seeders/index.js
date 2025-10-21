@@ -1,15 +1,12 @@
+const { catchAsync } = require("../helpers/utils/catchAsync");
 const roleSeeder = require("../services/role");
 const adminSeeder = require("../services/staff");
 
-const runSeeders = async () => {
-  console.log("🚀 Running all seeders...");
-  await roleSeeder(); // first roles
-  await adminSeeder(); // then admin
-  console.log("✅ All seeders executed successfully!");
-};
+const runSeeders = catchAsync(async () => {
+  logger.info("🚀 Running all seeders...");
+  await roleSeeder();
+  await adminSeeder();
+  logger.info("🎉 All seeders executed successfully!");
+});
 
-module.exports = {
-  roleSeeder,
-  adminSeeder,
-  runSeeders,
-};
+module.exports = runSeeders;

@@ -93,3 +93,24 @@ error: Oct-19-2025 01:33:25: ValidationError: User validation failed: gender: `M
     at /Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/mongoose/lib/document.js:3012:17
     at /Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/mongoose/lib/schematype.js:1368:9
     at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+error: Oct-19-2025 17:01:19: ReferenceError: value is not defined
+    at /Users/jeeshanoffice/Development/BazarGhorr-Backend/api/services/auth.js:246:9
+    at /Users/jeeshanoffice/Development/BazarGhorr-Backend/api/helpers/utils/catchAsync.js:6:19
+    at registerDeliveryPartnerController (/Users/jeeshanoffice/Development/BazarGhorr-Backend/api/controllers/deliveryPartnar/delivaryPartner.contoller.js:4:16)
+    at Layer.handleRequest (/Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/router/lib/layer.js:152:17)
+    at next (/Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/router/lib/route.js:157:13)
+    at done (/Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/multer/lib/make-middleware.js:59:7)
+    at indicateDone (/Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/multer/lib/make-middleware.js:63:68)
+    at Multipart.<anonymous> (/Users/jeeshanoffice/Development/BazarGhorr-Backend/node_modules/multer/lib/make-middleware.js:187:7)
+    at Multipart.emit (node:events:520:28)
+    at emitCloseNT (node:internal/streams/destroy:148:10)
+error: Oct-19-2025 23:50:19: undefined
+error: Oct-19-2025 23:50:42: undefined
+error: Oct-19-2025 23:50:42: undefined
+error: Oct-19-2025 23:51:00: undefined
+error: Oct-19-2025 23:51:14: undefined
+error: Oct-19-2025 23:51:14: undefined
+error: Oct-19-2025 23:54:05: undefined
+error: Oct-19-2025 23:54:06: undefined
+error: Oct-19-2025 23:58:10: undefined
+error: Oct-20-2025 00:02:47: undefined

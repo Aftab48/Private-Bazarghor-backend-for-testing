@@ -1,8 +1,8 @@
 const { createLogger, format, transports } = require("winston");
 const moment = require("moment-timezone");
-const morgan = require('morgan');
+const morgan = require("morgan");
 
-module.exports = createLogger({
+const logger = createLogger({
   transports: [
     new transports.Console({
       format: format.combine(
@@ -40,10 +40,14 @@ module.exports = createLogger({
     }),
   ],
 });
-module.exports.morganInstance = morgan('dev', {
+
+const morganInstance = morgan("dev", {
   stream: {
     write: (str) => {
-      logger.info(str);
+      logger.info(str.trim());
     },
   },
 });
+
+module.exports = logger;
+module.exports.morganInstance = morganInstance;

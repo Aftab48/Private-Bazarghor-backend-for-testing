@@ -5,7 +5,7 @@ const responseCode = require("../utils/responseCode");
 const catchAsync = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((err) => {
     console.log(err.message);
-    res.status(responseCode.internalServerError).json({
+    res.status(responseCode?.internalServerError).json({
       code: RESPONSE_CODE.ERROR,
       message: err.message,
       data: {},
