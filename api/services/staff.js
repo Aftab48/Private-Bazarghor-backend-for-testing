@@ -4,7 +4,6 @@ const { Role } = require("../models/role");
 const adminData = require("../seeders/admin.json").sales_account_creds;
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const { ROLE } = require("../../config/constants/authConstant");
-const logger = require("../helpers/utils/logger");
 
 const adminSeeder = catchAsync(async () => {
   logger.info("⏳ Checking default admin...");
@@ -20,20 +19,13 @@ const adminSeeder = catchAsync(async () => {
     return existingAdmin;
   }
 
-  const hashedPassword = await bcrypt.hash(adminData.password, 10);
+
   const newAdmin = await User.create({
     firstName: adminData.firstName,
     lastName: adminData.lastName,
     email: adminData.email,
     mobNo: adminData.mobNo,
-    passwords: [
-      {
-        pass: hashedPassword,
-        salt: hashedPassword.slice(7, 29),
-        isActive: true,
-        createdAt: new Date(),
-      },
-    ],
+    passwords: [  { pass: adminData.password }],
     roles: [{ roleId: adminRole._id }],
     isPrimaryAdmin: true,
     isActive: true,

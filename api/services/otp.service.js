@@ -48,7 +48,7 @@ const sendOTP = catchAsync(async (req, res) => {
 
   logger.info(`Login OTP sent to ${mobNo}: ${HARDCODED_OTP}`);
 
-  return messages.successResponse(
+  return messages.verificationOTP(
     {
       message: "OTP sent for login",
       otp: HARDCODED_OTP,
@@ -89,7 +89,7 @@ const verifyOTPForRegistration = catchAsync(async (req, res) => {
     { new: true }
   );
 
-  return messages.successResponse(
+  return messages.loginOtpVerified(
     { mobNo },
     res,
     "Mobile number verified successfully"
@@ -127,7 +127,7 @@ const verifyOTPAndLogin = catchAsync(async (req, res) => {
 
   const tokenData = await generateToken(updatedUser, deviceDetail);
 
-  return messages.successResponse(
+  return messages.loginOtpVerified(
     {
       user: {
         _id: updatedUser._id,
@@ -168,7 +168,7 @@ const resendOTP = catchAsync(async (req, res) => {
 
   logger.info(`OTP resent to ${mobNo}: ${HARDCODED_OTP}`);
 
-  return messages.successResponse(
+  return messages.verificationOTP(
     { message: "OTP resent successfully", otp: HARDCODED_OTP, expireTime },
     res,
     "OTP resent successfully"

@@ -6,6 +6,7 @@ const {
   ROLE,
   VENDOR_STATUS,
   DELIVERY_PARTNER_STATUS,
+  CUSTOMER_STATUS,
 } = require("../../config/constants/authConstant");
 const FileService = require("../services/file.service");
 const {
@@ -14,6 +15,7 @@ const {
   removeToken,
 } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
+const logger = require("../helpers/utils/logger");
 
 const createVendor = catchAsync(async (req, res) => {
   const {
@@ -512,6 +514,258 @@ const updateDeliveryPartner = async (userId, body, files, res) => {
   );
 };
 
+const createCustomer = catchAsync(async (req, res) => {
+  const { fullName, mobNo } = req.body;
+
+  if (!fullName || !mobNo) {
+    return messages.insufficientParameters(
+      res,
+      "Full name and mobile number are required"
+    );
+  }
+
+  const tempQuery = {
+    mobNo,
+    tempRegister: true,
+    mobVerifiedAt: { $exists: true },
+  };
+  const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
+  if (!tempUser) {
+    return messages.badRequest(
+      { message: "Please verify your mobile number first" },
+      res,
+      "Mobile verification required"
+    );
+  }
+
+  const existingUser = await User.findOne({
+    mobNo,
+    _id: { $ne: tempUser._id },
+    tempRegister: { $ne: true },
+  }).lean();
+  if (existingUser) {
+    return messages.badRequest(
+      {
+        error: [
+          {
+            field: "mobNo",
+            value: existingUser.mobNo,
+            message: "Mobile number already registered",
+          },
+        ],
+      },
+      res,
+      "Mobile number already registered"
+    );
+  }
+
+  const customerRole = await Role.findOne({ code: ROLE.CUSTOMER }).lean();
+  if (!customerRole?._id) {
+    return messages.recordNotFound(res, "Customer role not found in system");
+  }
+
+  // Split full name into first and last name
+  const nameParts = fullName.trim().split(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(" ") || "";
+
+  const customerData = {
+    firstName,
+    lastName,
+    mobNo,
+    roles: [{ roleId: customerRole._id, code: customerRole?.code }],
+    isActive: true,
+    profileCompleted: 20, // Basic profile completed with name and mobile
+    status: CUSTOMER_STATUS.APPROVED, // Auto approve customers
+    termsAndCondition: true,
+    customerAddress: [], // Empty array initially
+  };
+
+  try {
+    const customer = await User.findByIdAndUpdate(
+      tempUser._id,
+      { $set: customerData, $unset: { tempRegister: 1 } },
+      { new: true }
+    );
+
+    const tokenData = await generateToken(
+      customer,
+      req.headers["user-agent"] || "Unknown Device"
+    );
+
+    return messages?.successResponse(
+      {
+        customer: {
+          _id: customer._id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          fullName: `${customer.firstName} ${customer.lastName}`.trim(),
+          mobNo: customer.mobNo,
+          roles: customer.roles,
+          profileCompleted: customer.profileCompleted,
+          email: customer.email,
+          dob: customer.dob,
+          gender: customer.gender,
+          customerAddress: customer.customerAddress,
+        },
+        token: tokenData.token,
+        refreshToken: tokenData.refreshToken,
+        validateTill: tokenData.validateTill,
+      },
+      res,
+      "Customer registered successfully"
+    );
+  } catch (err) {
+    logger.error("Customer creation error:", err);
+    return messages?.failureResponse(err, res);
+  }
+});
+
+const getCustomer = async (userId) => {
+  if (!userId) return null;
+  return await User.findById(userId)
+    .select(
+      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -createdAt -updatedAt"
+    )
+    .lean();
+};
+
+const updateCustomer = async (userId, body, files, res) => {
+  if (!userId) return messages.recordNotFound(res, "User not found");
+
+  const user = await User.findById(userId).lean();
+  if (!user) return messages.recordNotFound(res, "User not found");
+
+  const allowedFields = [
+    "firstName",
+    "lastName",
+    "email",
+    "dob",
+    "gender",
+    "customerAddress",
+  ];
+
+  const update = {};
+  for (const key of allowedFields) {
+    if (
+      Object.prototype.hasOwnProperty.call(body, key) &&
+      body[key] !== undefined
+    ) {
+      update[key] = body[key];
+    }
+  }
+
+  // Handle customerAddress updates
+  if (update.customerAddress && Array.isArray(update.customerAddress)) {
+    // Ensure only one default address
+    const hasDefault = update.customerAddress.some((addr) => addr.isDefault);
+    if (hasDefault) {
+      update.customerAddress = update.customerAddress.map((addr) => ({
+        ...addr,
+        isDefault: addr.isDefault || false,
+      }));
+    }
+  }
+
+  // Handle file uploads
+  if (files?.profilePicture?.[0]) {
+    update.profilePicture = FileService.generateFileObject(
+      files.profilePicture[0]
+    );
+  }
+
+  if (Object.keys(update).length === 0) {
+    return messages.badRequest(
+      { error: "No updatable fields provided" },
+      res,
+      "No fields provided to update"
+    );
+  }
+
+  // Calculate profile completion percentage
+  let profileCompleted = 20; // Base for name and mobile
+  if (update.email) profileCompleted += 20;
+  if (update.dob) profileCompleted += 20;
+  if (update.gender) profileCompleted += 20;
+  if (update.customerAddress && update.customerAddress.length > 0)
+    profileCompleted += 20;
+
+  update.profileCompleted = Math.min(profileCompleted, 100);
+
+  const updated = await User.findByIdAndUpdate(
+    userId,
+    { $set: update },
+    { new: true }
+  ).lean();
+
+  // Build response only with fields that were actually updated
+  const resp = { _id: updated._id };
+  for (const k of Object.keys(update)) {
+    if (k === "profilePicture") {
+      resp.profilePicture = updated.profilePicture;
+    } else if (k === "dob") {
+      resp.dob = formatDate(updated.dob);
+    } else if (k === "firstName" || k === "lastName") {
+      resp.fullName = `${updated.firstName} ${updated.lastName}`.trim();
+      resp.firstName = updated.firstName;
+      resp.lastName = updated.lastName;
+    } else {
+      resp[k] = updated[k];
+    }
+  }
+
+  return messages?.successResponse(
+    { customer: resp },
+    res,
+    "Customer profile updated successfully"
+  );
+};
+
+const adminLoginService = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return messages.insufficientParameters(res, "Email and Password are required");
+  }
+  const user = await User.findOne({ email, isActive: true });
+ 
+  if (!user) {
+    return messages.recordNotFound(res, "Admin not found");
+  }
+  const adminRole = await Role.findOne({ code: ROLE.ADMIN }).lean();
+  if (!adminRole?._id) {
+    return messages.recordNotFound(res, "Admin role not found in system");
+  }
+
+  const isPasswordMatched = await user.isPasswordMatch(password);
+  if (!isPasswordMatched) {
+    return messages.wrongPassword(res,  "Incorrect password");
+  }
+  try {
+    const tokenData = await generateToken(
+      user,
+      req.headers["user-agent"] || "Unknown Device"
+    );
+
+  const data = {
+    id: user._id,
+    email: user.email,
+    mobNo: user.mobNo,
+    name: `${user.firstName} ${user.lastName}`,
+    roles: [{ roleId: adminRole._id, code: adminRole?.code }],
+    token: tokenData.token,
+    refreshToken: tokenData.refreshToken,
+    validateTill: tokenData.validateTill,
+  };
+
+  return messages.loginSuccess(data, res, {message: "Admin logged in successfully"});
+  } catch (error) {
+    logger.error("Error logging in admin: ", error);
+    return messages.internalServerError(res, {message: "Error logging in admin"});
+  }
+});
+
+
+
 const logoutUser = catchAsync(async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -523,19 +777,24 @@ const logoutUser = catchAsync(async (req, res) => {
     return messages.unAuthorizedRequest("Invalid or expired token", res);
   }
   await removeToken(decoded.id, token);
-  return messages.successResponse(
+  return messages.logoutSuccessfull(
     { message: "Logged out" },
     res,
     "Logged out successfully"
   );
 });
 
+
 module.exports = {
   createVendor,
   createDeliveryPartner,
+  createCustomer,
   logoutUser,
   getVendor,
   getDeliveryPartner,
+  getCustomer,
   updateVendor,
   updateDeliveryPartner,
+  updateCustomer,
+  adminLoginService
 };

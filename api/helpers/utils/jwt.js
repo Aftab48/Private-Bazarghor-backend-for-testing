@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET;
 const User = require("../../models/user");
+const { JWT } = require("../../../config/constants/authConstant");
 
 exports.generateToken = async (user, deviceDetail = null) => {
   const payload = {
@@ -10,8 +11,10 @@ exports.generateToken = async (user, deviceDetail = null) => {
     mobNo: user.mobNo,
   };
 
-  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "1d" });
-  const refreshToken = jwt.sign(payload, SECRET_KEY, { expiresIn: "7d" });
+  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: JWT.EXPIRES_IN });
+  const refreshToken = jwt.sign(payload, SECRET_KEY, {
+    expiresIn: JWT.REFRESH_EXPIRES_IN,
+  });
 
   const validateTill = new Date();
   validateTill.setDate(validateTill.getDate() + 1);
@@ -45,7 +48,6 @@ exports.verifyToken = async (token) => {
       roles: decoded.roles,
       email: decoded.email,
       mobNo: decoded.mobNo,
-      "tokens.validateTill": { $gt: new Date() },
     }).lean();
 
     if (!user) {

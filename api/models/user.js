@@ -134,6 +134,22 @@ const schema = new Schema(
       storeAddress: { type: String },
       storePictures: { type: [fileSchema], default: [] },
     },
+    customerAddress: [
+      {
+        addressLine1: { type: String, required: true },
+        addressLine2: { type: String },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        pincode: { type: String, required: true },
+        landmark: { type: String },
+        addressType: {
+          type: String,
+          enum: ["home", "office", "other"],
+          default: "home",
+        },
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
     termsAndCondition: { type: Boolean, default: false },
     approvalStatus: { type: Number },
     consentAgree: { type: Boolean, default: false },

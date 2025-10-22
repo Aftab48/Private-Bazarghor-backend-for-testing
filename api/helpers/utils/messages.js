@@ -13,6 +13,7 @@ exports.unAuthenticated = (res, message) => {
 };
 
 exports.successResponse = (data, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: message || res.message,
@@ -84,7 +85,7 @@ exports.badRequest = (data, res, message) => {
 
 exports.recordNotFound = (res, message) => {
   if (message) res.message = message;
-  return res.status(responseStatusCode.success).json({
+  return res.status(responseStatusCode?.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
     data: {},
@@ -121,7 +122,8 @@ exports.unAuthorizedRequest = (message, res) => {
     data: {},
   });
 };
-exports.loginSuccess = async (result, res) => {
+exports.loginSuccess = async (result, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.LOGIN,
     message: res.message,
@@ -135,7 +137,8 @@ exports.verificationOTP = (result, res) => {
     data: result.token ? result : { message: result },
   });
 };
-exports.passwordEmailWrong = (res) => {
+exports.passwordEmailWrong = (res , message) => {
+    if (message) res.message = message;
   return res.status(responseStatusCode.unAuthorized).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
@@ -164,7 +167,8 @@ exports.userNotFound = (res) => {
     data: {},
   });
 };
-exports.logoutSuccessfull = (result, res) => {
+exports.logoutSuccessfull = (result, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
     message: res.message,
@@ -178,7 +182,8 @@ exports.changePasswordFailResponse = (res) => {
     data: {},
   });
 };
-exports.loginOtpVerified = (data, res) => {
+exports.loginOtpVerified = (data, res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.OTP,
     message: res.message,
