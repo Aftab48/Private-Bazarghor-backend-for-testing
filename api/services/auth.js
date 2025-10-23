@@ -15,7 +15,6 @@ const {
   removeToken,
 } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
-const logger = require("../helpers/utils/logger");
 
 const createVendor = catchAsync(async (req, res) => {
   const {
@@ -93,10 +92,7 @@ const createVendor = catchAsync(async (req, res) => {
     profileCompleted: 0,
     status: VENDOR_STATUS.PENDING,
     termsAndCondition: false,
-    shopname,
     pincode,
-    shopaddress,
-    // storeDetails nested object for future grouping
     storeDetails: {
       storeName: shopname,
       storeAddress: shopaddress,

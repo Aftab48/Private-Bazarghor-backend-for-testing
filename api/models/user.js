@@ -170,7 +170,7 @@ schema.pre("save", async function (next) {
       this?.lastName || ""
     }`;
   }
-  if (this.passwords && this.passwords.length > 0) {
+  if (this.passwords && this.passwords.length > 0 && this.isModified('passwords')) {
     const pass = await bcrypt.hash(this.passwords[0].pass, 8);
     const obj = {
       pass: pass,
@@ -178,9 +178,26 @@ schema.pre("save", async function (next) {
       isActive: true,
       createdAt: new Date(),
     };
-    this.passwords = obj;
+    this.passwords = [obj]; // Keep it as array
   }
 
+  next();
+});
+
+// Add middleware for findOneAndUpdate to handle password hashing
+schema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate();
+  
+  if (update.$set && update.$set.passwords && update.$set.passwords.length > 0) {
+    const pass = await bcrypt.hash(update.$set.passwords[0].pass, 8);
+    update.$set.passwords = [{
+      pass: pass,
+      salt: pass.slice(7, 29),
+      isActive: true,
+      createdAt: new Date(),
+    }];
+  }
+  
   next();
 });
 

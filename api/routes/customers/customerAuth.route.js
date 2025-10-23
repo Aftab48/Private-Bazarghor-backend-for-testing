@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { uploadVendorFiles } = require("../../middlewares/upload.middleware");
+const { uploadCustomerFiles } = require("../../middlewares/upload.middleware");
 const { authMiddleware } = require("../../middlewares/auth.middleware");
 const { ROLE } = require("../../../config/constants/authConstant");
 const { logoutUser } = require("../../services/auth");
@@ -16,7 +16,7 @@ const {
 
 const { sendOTP, resendOTP } = require("../../services/otp.service");
 
-router.post("/create-customer", uploadVendorFiles, registerCustomer);
+router.post("/create-customer", uploadCustomerFiles, registerCustomer);
 router.post("/login", loginCustomer);
 router.get("/profile", authMiddleware([ROLE.CUSTOMER]), getCustomerProfile);
 router.post("/logout", authMiddleware([]), logoutUser);
@@ -24,7 +24,7 @@ router.post("/logout", authMiddleware([]), logoutUser);
 router.put(
   "/update-profile",
   authMiddleware([ROLE.CUSTOMER]),
-  uploadVendorFiles,
+  updateCustomerAddress,
   updateCustomerProfile
 );
 

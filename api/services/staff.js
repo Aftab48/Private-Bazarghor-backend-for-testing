@@ -1,4 +1,3 @@
-const bcrypt = require("bcrypt");
 const User = require("../models/user");
 const { Role } = require("../models/role");
 const adminData = require("../seeders/admin.json").sales_account_creds;
