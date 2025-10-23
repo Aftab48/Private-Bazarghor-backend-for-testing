@@ -12,6 +12,21 @@ const app = express();
 const server = http.createServer(app);
 global.utils = utils;
 global.logger = require("./api/helpers/utils/logger");
+
+// CORS Configuration - Allow frontend to access API
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(global.logger.morganInstance);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
