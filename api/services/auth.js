@@ -727,7 +727,7 @@ const adminLoginService = catchAsync(async (req, res) => {
   if (!user) {
     return messages.recordNotFound(res, "Admin not found");
   }
-  const adminRole = await Role.findOne({ code: ROLE.ADMIN }).lean();
+  const adminRole = await Role.findOne({ code: ROLE.SUPER_ADMIN }).lean();
   if (!adminRole?._id) {
     return messages.recordNotFound(res, "Admin role not found in system");
   }

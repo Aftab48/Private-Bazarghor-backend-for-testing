@@ -7,7 +7,7 @@ const { ROLE } = require("../../config/constants/authConstant");
 const adminSeeder = catchAsync(async () => {
   logger.info("⏳ Checking default admin...");
   const existingAdmin = await User.findOne({ email: adminData.email });
-  const adminRole = await Role.findOne({ code: ROLE.ADMIN });
+  const adminRole = await Role.findOne({ code: ROLE.SUPER_ADMIN });
 
   if (!adminRole) {
     logger.error("❌ ADMIN role not found. Run roleSeeder first!");
@@ -25,7 +25,7 @@ const adminSeeder = catchAsync(async () => {
     email: adminData.email,
     mobNo: adminData.mobNo,
     passwords: [  { pass: adminData.password }],
-    roles: [{ roleId: adminRole._id }],
+    roles: [{ roleId: adminRole._id , code: adminRole.code }],
     isPrimaryAdmin: true,
     isActive: true,
   });

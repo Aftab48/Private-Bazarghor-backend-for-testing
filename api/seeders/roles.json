@@ -1,26 +1,38 @@
 [
   {
+    "name": "Super Admin",
+    "code": "SUPER_ADMIN",
+    "weight": 1,
+    "canDel": false
+  },
+  {
     "name": "Admin",
     "code": "ADMIN",
-    "weight": 1,
+    "weight": 2,
+    "canDel": false
+  },
+  {
+    "name": "Sub Admin",
+    "code": "SUB_ADMIN",
+    "weight": 3,
     "canDel": false
   },
   {
     "name": "Vendor",
     "code": "VENDOR",
-    "weight": 3,
+    "weight": 4,
     "canDel": false
   },
   {
     "name": "Delivery_Partner",
     "code": "DELIVERY_PARTNER",
-    "weight": 2,
+    "weight": 5,
     "canDel": false
-  }
-  ,{
+  },
+  {
     "name": "Customer",
     "code": "CUSTOMER",
-    "weight": 4,
+    "weight": 5,
     "canDel": false
   }
 ]
