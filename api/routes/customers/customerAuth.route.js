@@ -6,12 +6,12 @@ const { ROLE } = require("../../../config/constants/authConstant");
 const { logoutUser } = require("../../services/auth");
 const {
   registerCustomer,
-  loginCustomer,
+  deleteAddressController,
+  updateAddressController,
   getCustomerProfile,
+  addAddressController,
+  loginCustomer,
   updateCustomerProfile,
-  addCustomerAddress,
-  updateCustomerAddress,
-  deleteCustomerAddress,
 } = require("../../controllers/customers/customer.controller");
 
 const { sendOTP, resendOTP } = require("../../services/otp.service");
@@ -24,20 +24,20 @@ router.post("/logout", authMiddleware([]), logoutUser);
 router.put(
   "/update-profile",
   authMiddleware([ROLE.CUSTOMER]),
-  updateCustomerAddress,
+  updateAddressController,
   updateCustomerProfile
 );
 
-router.post("/address", authMiddleware([ROLE.CUSTOMER]), addCustomerAddress);
+router.post("/address", authMiddleware([ROLE.CUSTOMER]), addAddressController);
 router.put(
   "/address/:addressId",
   authMiddleware([ROLE.CUSTOMER]),
-  updateCustomerAddress
+  updateAddressController
 );
 router.delete(
   "/address/:addressId",
   authMiddleware([ROLE.CUSTOMER]),
-  deleteCustomerAddress
+  deleteAddressController
 );
 
 router.post("/login/send-otp", sendOTP);

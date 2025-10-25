@@ -25,14 +25,19 @@ const upload = multer({ storage });
 // ✅ Middleware to handle vendor files (profile and shop pictures)
 const uploadVendorFiles = upload.fields([
   { name: "profilePicture", maxCount: 1 },
-  { name: "storePicture", maxCount: 1 },
+  { name: "storePictures", maxCount: 1 },
 ]);
 
 // ✅ Middleware to handle delivery partner files (vehicle pictures only)
 const uploadDeliveryPartnerFiles = upload.fields([
   { name: "vehiclePictures", maxCount: 2 },
+  { name: "profilePicture", maxCount: 1 },
 ]);
 const uploadCustomerFiles = upload.fields([
   { name: "profilePicture", maxCount: 1 },
 ]);
-module.exports = { uploadVendorFiles, uploadDeliveryPartnerFiles, uploadCustomerFiles };
+module.exports = {
+  uploadVendorFiles,
+  uploadDeliveryPartnerFiles,
+  uploadCustomerFiles,
+};

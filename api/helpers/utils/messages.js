@@ -82,6 +82,14 @@ exports.badRequest = (data, res, message) => {
     data: data,
   });
 };
+exports.alreadyExists = (res, message, data = null) => {
+  if (message) res.message = message;
+  return res.status(responseStatusCode.validationError).json({
+    code: RESPONSE_CODE.ERROR,
+    message: res.message,
+    data: data,
+  });
+};
 
 exports.recordNotFound = (res, message) => {
   if (message) res.message = message;
@@ -137,8 +145,8 @@ exports.verificationOTP = (result, res) => {
     data: result.token ? result : { message: result },
   });
 };
-exports.passwordEmailWrong = (res , message) => {
-    if (message) res.message = message;
+exports.passwordEmailWrong = (res, message) => {
+  if (message) res.message = message;
   return res.status(responseStatusCode.unAuthorized).json({
     code: RESPONSE_CODE.ERROR,
     message: res.message,
@@ -167,7 +175,7 @@ exports.userNotFound = (res) => {
     data: {},
   });
 };
-exports.logoutSuccessfull = (result, res, message) => {
+exports.logoutSuccessful = (result, res, message) => {
   if (message) res.message = message;
   return res.status(responseStatusCode.success).json({
     code: RESPONSE_CODE.DEFAULT,
@@ -276,5 +284,14 @@ exports.clientError = (res) => {
   return res.status(responseStatusCode.validationError).json({
     code: RESPONSE_CODE.FAILURE,
     message: res.message,
+  });
+};
+
+exports.resetPasswordOtpSend = (res, message, data) => {
+  if (message) res.message = message;
+  return res.status(responseStatusCode.success).json({
+    code: RESPONSE_CODE.FORGOT_PASSWORD,
+    message: res.message,
+    data: data,
   });
 };

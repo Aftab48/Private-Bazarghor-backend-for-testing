@@ -2,6 +2,7 @@ const { Role } = require("../models/role");
 const User = require("../models/user");
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const messages = require("../helpers/utils/messages");
+const bcrypt = require("bcrypt");
 const {
   ROLE,
   VENDOR_STATUS,
@@ -15,8 +16,11 @@ const {
   removeToken,
 } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
+const { generateOTP } = require("../helpers/utils/comman");
+const moment = require("moment-timezone");
+const { sendEmail } = require("../services/send.email");
 
-const createVendor = catchAsync(async (req, res) => {
+const createVendor = async (req) => {
   const {
     email,
     password,
@@ -30,7 +34,13 @@ const createVendor = catchAsync(async (req, res) => {
 
   if (!email) {
     FileService.deleteUploadedFiles(req.files);
-    return messages?.insufficientParameters(res, "Email is required");
+    return { success: false, error: "Email is required" };
+  }
+
+  const user = await User.findOne({ email });
+  if (user) {
+    FileService.deleteUploadedFiles(req.files);
+    return { success: false, error: "Email is already registered" };
   }
 
   const tempQuery = {
@@ -41,11 +51,7 @@ const createVendor = catchAsync(async (req, res) => {
   const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
   if (!tempUser) {
     FileService.deleteUploadedFiles(req.files);
-    return messages.badRequest(
-      { message: "Please verify your mobile number first" },
-      res,
-      "Mobile verification required"
-    );
+    return { success: false, error: "Please verify your mobile number first" };
   }
 
   const existingUser = await User.findOne({
@@ -54,33 +60,16 @@ const createVendor = catchAsync(async (req, res) => {
   }).lean();
   if (existingUser) {
     FileService.deleteUploadedFiles(req.files);
-
-    const conflicts = [
-      {
-        field: "email",
-        value: existingUser.email,
-        message: "Email already registered",
-      },
-    ];
-
-    logger.info(
-      "Vendor registration conflict fields:",
-      conflicts.map((c) => c.field).join(", ")
-    );
-
-    return messages?.badRequest(
-      { error: conflicts },
-      res,
-      conflicts[0].message
-    );
+    return { success: false, error: "Email already registered" };
   }
 
   const vendorRole = await Role.findOne({ code: ROLE.VENDOR }).lean();
   if (!vendorRole?._id) {
     FileService.deleteUploadedFiles(req.files);
-    return messages?.recordNotFound(res, "Vendor role not found in system");
+    return { success: false, error: "Vendor role not found in system" };
   }
 
+  // Prepare vendor data
   const vendorData = {
     email,
     firstName,
@@ -108,7 +97,7 @@ const createVendor = catchAsync(async (req, res) => {
 
   if (req.files?.storePicture?.[0]) {
     const sp = FileService.generateFileObject(req.files.storePicture[0]);
-    vendorData.storePicture = sp;
+    vendorData.storePictures = sp;
     vendorData.storeDetails.storePictures = [sp];
   }
 
@@ -124,8 +113,9 @@ const createVendor = catchAsync(async (req, res) => {
       req.headers["user-agent"] || "Unknown Device"
     );
 
-    return messages?.successResponse(
-      {
+    return {
+      success: true,
+      data: {
         vendor: {
           _id: vendor._id,
           firstName: vendor.firstName,
@@ -142,17 +132,15 @@ const createVendor = catchAsync(async (req, res) => {
         refreshToken: tokenData.refreshToken,
         validateTill: tokenData.validateTill,
       },
-      res,
-      "Vendor registered successfully"
-    );
+    };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
     logger.error("Vendor creation error:", err);
-    return messages?.failureResponse(err, res);
+    return { success: false, error: err.message };
   }
-});
+};
 
-const createDeliveryPartner = catchAsync(async (req, res) => {
+const createDeliveryPartner = async (req) => {
   const {
     email,
     password,
@@ -167,7 +155,13 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
 
   if (!email) {
     FileService.deleteUploadedFiles(req.files);
-    return messages.insufficientParameters(res, "Email is required");
+    return { success: false, error: "Email is required" };
+  }
+
+  const user = await User.findOne({ email });
+  if (user) {
+    FileService.deleteUploadedFiles(req.files);
+    return { success: false, error: "Email is already registered" };
   }
 
   const tempQuery = {
@@ -178,11 +172,7 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
   const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
   if (!tempUser) {
     FileService.deleteUploadedFiles(req.files);
-    return messages.badRequest(
-      { message: "Please verify your mobile number first" },
-      res,
-      "Mobile verification required"
-    );
+    return { success: false, error: "Please verify your mobile number first" };
   }
 
   const orConditions = [{ email }];
@@ -193,6 +183,7 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
     $or: orConditions,
     _id: { $ne: tempUser._id },
   }).lean();
+
   if (existingUser) {
     FileService.deleteUploadedFiles(req.files);
 
@@ -226,24 +217,21 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
       });
     }
 
-    logger.info(
-      "Registration conflict fields:",
-      conflicts.map((c) => c.field).join(", ")
-    );
     const messageText =
       conflicts.length === 1
         ? conflicts[0].message
         : "One or more fields already registered";
 
-    return messages.badRequest({ error: conflicts }, res, messageText);
+    return { success: false, error: messageText, conflicts };
   }
 
   const deliveryRole = await Role.findOne({
     code: ROLE.DELIVERY_PARTNER,
   }).lean();
+
   if (!deliveryRole?._id) {
     FileService.deleteUploadedFiles(req.files);
-    return messages.recordNotFound(res, "Delivery Partner role not found");
+    return { success: false, error: "Delivery Partner role not found" };
   }
 
   const partnerData = {
@@ -275,19 +263,27 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
     };
   }
 
+  if (req.files?.profilePicture?.[0]) {
+    partnerData.profilePicture = FileService.generateFileObject(
+      req.files.profilePicture[0]
+    );
+  }
+
   try {
     const partner = await User.findByIdAndUpdate(
       tempUser._id,
       { $set: partnerData, $unset: { tempRegister: 1 } },
       { new: true }
     );
+
     const tokenData = await generateToken(
       partner,
       req.headers["user-agent"] || "Unknown Device"
     );
 
-    return messages?.successResponse(
-      {
+    return {
+      success: true,
+      data: {
         partner: {
           _id: partner._id,
           firstName: partner.firstName,
@@ -305,41 +301,47 @@ const createDeliveryPartner = catchAsync(async (req, res) => {
         refreshToken: tokenData.refreshToken,
         validateTill: tokenData.validateTill,
       },
-      res,
-      "Delivery Partner registered successfully"
-    );
+    };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
     logger.error("Delivery Partner creation error:", err);
-    return messages.failureResponse(err, res);
+    return { success: false, error: err.message };
   }
-});
+};
 
 const getVendor = async (userId) => {
-  if (!userId) return null;
-  return await User.findById(userId)
+  if (!userId) return { success: false, notFound: true };
+
+  const user = await User.findById(userId)
     .select(
-      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -isPrimaryAdmin -createdAt -updatedAt"
+      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -createdAt -updatedAt"
     )
     .lean();
+
+  if (!user) return { success: false, notFound: true };
+
+  return { success: true, data: user };
 };
 
 const getDeliveryPartner = async (userId) => {
-  if (!userId) return null;
-  return await User.findById(userId)
+  if (!userId) return { success: false, notFound: true };
+
+  const user = await User.findById(userId)
     .select(
-      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -isPrimaryAdmin -createdAt -updatedAt"
+      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -createdAt -updatedAt"
     )
     .lean();
+
+  if (!user) return { success: false, notFound: true };
+
+  return { success: true, data: user };
 };
 
-// Partial update for vendor profile
-// Partial update for vendor profile
-const updateVendor = async (userId, body, files, res) => {
-  if (!userId) return messages.recordNotFound(res, "User not found");
+const updateVendor = async (userId, body, files) => {
+  if (!userId) return { success: false, notFound: true };
 
   const user = await User.findById(userId).lean();
-  if (!user) return messages.recordNotFound(res, "User not found");
+  if (!user) return { success: false, notFound: true };
 
   const allowedFields = [
     "firstName",
@@ -348,7 +350,6 @@ const updateVendor = async (userId, body, files, res) => {
     "shopname",
     "pincode",
     "shopaddress",
-    // keep mobNo editing off until later
   ];
 
   const update = {};
@@ -361,26 +362,24 @@ const updateVendor = async (userId, body, files, res) => {
     }
   }
 
-  // files handling
   if (files?.profilePicture?.[0]) {
     update.profilePicture = FileService.generateFileObject(
       files.profilePicture[0]
     );
   }
-  if (files?.storePicture?.[0]) {
-    const sp = FileService.generateFileObject(files.storePicture[0]);
-    update.storePicture = sp;
-    // also sync nested storeDetails
+  if (files?.storePictures?.[0]) {
+    const sp = FileService.generateFileObject(files.storePictures[0]);
+    update.storePictures = sp;
     update.storeDetails = update.storeDetails || {};
     update.storeDetails.storePictures = [sp];
   }
 
   if (Object.keys(update).length === 0) {
-    return messages.badRequest(
-      { error: "No updatable fields provided" },
-      res,
-      "No fields provided to update"
-    );
+    return {
+      success: false,
+      notFound: true,
+      error: "No fields provided to update",
+    };
   }
 
   const updated = await User.findByIdAndUpdate(
@@ -389,7 +388,6 @@ const updateVendor = async (userId, body, files, res) => {
     { new: true }
   ).lean();
 
-  // Build response only with fields that were actually updated
   const resp = { _id: updated._id };
   for (const k of Object.keys(update)) {
     if (k === "profilePicture") {
@@ -397,7 +395,6 @@ const updateVendor = async (userId, body, files, res) => {
     } else if (k === "storePicture") {
       resp.storePicture = updated.storePicture;
     } else if (k === "storeDetails") {
-      // if storeDetails was sent, prefer store-related flat fields if present
       if (update.storeDetails.storeName) resp.shopname = updated.shopname;
       if (update.storeDetails.storeAddress)
         resp.shopaddress = updated.shopaddress;
@@ -410,19 +407,22 @@ const updateVendor = async (userId, body, files, res) => {
     }
   }
 
-  return messages?.successResponse(
-    { vendor: resp },
-    res,
-    "Vendor profile updated successfully"
-  );
+  try {
+    await User.findByIdAndUpdate(userId, update, {
+      new: true,
+    }).lean();
+    return { success: true, data: resp };
+  } catch (err) {
+    logger.error("Vendor update error:", err);
+    return { success: false, error: err.message };
+  }
 };
 
-// Partial update for delivery partner profile
-const updateDeliveryPartner = async (userId, body, files, res) => {
-  if (!userId) return messages.recordNotFound(res, "User not found");
+const updateDeliveryPartner = async (userId, body, files) => {
+  if (!userId) return { success: false, notFound: true };
 
   const user = await User.findById(userId).lean();
-  if (!user) return messages.recordNotFound(res, "User not found");
+  if (!user) return { success: false, notFound: true };
 
   const allowedFields = [
     "firstName",
@@ -461,11 +461,11 @@ const updateDeliveryPartner = async (userId, body, files, res) => {
 
   // if nothing to update
   if (Object.keys(update).length === 0) {
-    return messages.badRequest(
-      { error: "No updatable fields provided" },
-      res,
-      "No fields provided to update"
-    );
+    return {
+      success: false,
+      notFound: true,
+      error: "No fields provided to update",
+    };
   }
 
   // sync flat vehicle and driver fields from vehicleDetails if provided
@@ -482,14 +482,12 @@ const updateDeliveryPartner = async (userId, body, files, res) => {
     { new: true }
   ).lean();
 
-  // Build response only with fields that were actually updated
   const resp = { _id: updated._id };
   for (const k of Object.keys(update)) {
     if (k === "profilePicture") {
       resp.profilePicture = updated.profilePicture;
     } else if (k === "vehiclePictures" || k === "vehicleDetails") {
       resp.vehiclePictures = updated.vehiclePictures;
-      // also include flat vehicle/driver fields if they were updated
       if (Object.prototype.hasOwnProperty.call(update, "vehicleNo")) {
         resp.vehicleNo = updated.vehicleNo;
       }
@@ -503,81 +501,85 @@ const updateDeliveryPartner = async (userId, body, files, res) => {
     }
   }
 
-  return messages?.successResponse(
-    { partner: resp },
-    res,
-    "Delivery Partner profile updated successfully"
-  );
+  try {
+    await User.findByIdAndUpdate(userId, update, {
+      new: true,
+    }).lean();
+    return { success: true, data: resp };
+  } catch (err) {
+    logger.error("Delivery Partner update error:", err);
+    return { success: false, error: err.message };
+  }
 };
 
-const createCustomer = catchAsync(async (req, res) => {
-  const { fullName, mobNo } = req.body;
+const createCustomer = async (body, headers) => {
+  try {
+    const { fullName, mobNo } = body;
 
-  if (!fullName || !mobNo) {
-    return messages.insufficientParameters(
-      res,
-      "Full name and mobile number are required"
-    );
-  }
+    if (!fullName || !mobNo) {
+      return {
+        success: false,
+        error: "Full name and mobile number are required",
+      };
+    }
 
-  const tempQuery = {
-    mobNo,
-    tempRegister: true,
-    mobVerifiedAt: { $exists: true },
-  };
-  const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
-  if (!tempUser) {
-    return messages.badRequest(
-      { message: "Please verify your mobile number first" },
-      res,
-      "Mobile verification required"
-    );
-  }
+    const tempQuery = {
+      mobNo,
+      tempRegister: true,
+      mobVerifiedAt: { $exists: true },
+    };
+    const tempUser = await User.findOne(tempQuery)
+      .sort({ updatedAt: -1 })
+      .lean();
 
-  const existingUser = await User.findOne({
-    mobNo,
-    _id: { $ne: tempUser._id },
-    tempRegister: { $ne: true },
-  }).lean();
-  if (existingUser) {
-    return messages.badRequest(
-      {
-        error: [
+    if (!tempUser) {
+      return {
+        success: false,
+        error: "Please verify your mobile number first",
+      };
+    }
+
+    const existingUser = await User.findOne({
+      mobNo,
+      _id: { $ne: tempUser._id },
+      tempRegister: { $ne: true },
+    }).lean();
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "Mobile number already registered",
+        conflicts: [
           {
             field: "mobNo",
             value: existingUser.mobNo,
             message: "Mobile number already registered",
           },
         ],
-      },
-      res,
-      "Mobile number already registered"
-    );
-  }
+      };
+    }
 
-  const customerRole = await Role.findOne({ code: ROLE.CUSTOMER }).lean();
-  if (!customerRole?._id) {
-    return messages.recordNotFound(res, "Customer role not found in system");
-  }
+    const customerRole = await Role.findOne({ code: ROLE.CUSTOMER }).lean();
+    if (!customerRole?._id) {
+      return { success: false, error: "Customer role not found in system" };
+    }
 
-  // Split full name into first and last name
-  const nameParts = fullName.trim().split(" ");
-  const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ") || "";
+    const nameParts = fullName.trim().split(" ");
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ") || "";
 
-  const customerData = {
-    firstName,
-    lastName,
-    mobNo,
-    roles: [{ roleId: customerRole._id, code: customerRole?.code }],
-    isActive: true,
-    profileCompleted: 20, // Basic profile completed with name and mobile
-    status: CUSTOMER_STATUS.APPROVED, // Auto approve customers
-    termsAndCondition: true,
-    customerAddress: [], // Empty array initially
-  };
+    const customerData = {
+      firstName,
+      lastName,
+      mobNo,
+      roles: [{ roleId: customerRole._id, code: customerRole.code }],
+      isActive: true,
+      profileCompleted: 20,
+      status: CUSTOMER_STATUS.APPROVED,
+      termsAndCondition: true,
+      customerAddress: [],
+    };
 
-  try {
     const customer = await User.findByIdAndUpdate(
       tempUser._id,
       { $set: customerData, $unset: { tempRegister: 1 } },
@@ -586,11 +588,12 @@ const createCustomer = catchAsync(async (req, res) => {
 
     const tokenData = await generateToken(
       customer,
-      req.headers["user-agent"] || "Unknown Device"
+      headers["user-agent"] || "Unknown Device"
     );
 
-    return messages?.successResponse(
-      {
+    return {
+      success: true,
+      data: {
         customer: {
           _id: customer._id,
           firstName: customer.firstName,
@@ -608,29 +611,30 @@ const createCustomer = catchAsync(async (req, res) => {
         refreshToken: tokenData.refreshToken,
         validateTill: tokenData.validateTill,
       },
-      res,
-      "Customer registered successfully"
-    );
+    };
   } catch (err) {
     logger.error("Customer creation error:", err);
-    return messages?.failureResponse(err, res);
+    return { success: false, error: err.message };
   }
-});
+};
 
 const getCustomer = async (userId) => {
-  if (!userId) return null;
-  return await User.findById(userId)
+  if (!userId) return { success: false, notFound: true };
+
+  const user = await User.findById(userId)
     .select(
       "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -createdAt -updatedAt"
     )
     .lean();
+
+  if (!user) return { success: false, notFound: true };
+  return { success: true, data: user };
 };
 
 const updateCustomer = async (userId, body, files, res) => {
-  if (!userId) return messages.recordNotFound(res, "User not found");
-
+  if (!userId) return { success: false, notFound: true };
   const user = await User.findById(userId).lean();
-  if (!user) return messages.recordNotFound(res, "User not found");
+  if (!user) return { success: false, notFound: true };
 
   const allowedFields = [
     "firstName",
@@ -651,9 +655,7 @@ const updateCustomer = async (userId, body, files, res) => {
     }
   }
 
-  // Handle customerAddress updates
   if (update.customerAddress && Array.isArray(update.customerAddress)) {
-    // Ensure only one default address
     const hasDefault = update.customerAddress.some((addr) => addr.isDefault);
     if (hasDefault) {
       update.customerAddress = update.customerAddress.map((addr) => ({
@@ -663,7 +665,6 @@ const updateCustomer = async (userId, body, files, res) => {
     }
   }
 
-  // Handle file uploads
   if (files?.profilePicture?.[0]) {
     update.profilePicture = FileService.generateFileObject(
       files.profilePicture[0]
@@ -671,14 +672,13 @@ const updateCustomer = async (userId, body, files, res) => {
   }
 
   if (Object.keys(update).length === 0) {
-    return messages.badRequest(
-      { error: "No updatable fields provided" },
-      res,
-      "No fields provided to update"
-    );
+    return {
+      success: false,
+      notFound: true,
+      error: "No fields provided to update",
+    };
   }
 
-  // Calculate profile completion percentage
   let profileCompleted = 20; // Base for name and mobile
   if (update.email) profileCompleted += 20;
   if (update.dob) profileCompleted += 20;
@@ -694,7 +694,6 @@ const updateCustomer = async (userId, body, files, res) => {
     { new: true }
   ).lean();
 
-  // Build response only with fields that were actually updated
   const resp = { _id: updated._id };
   for (const k of Object.keys(update)) {
     if (k === "profilePicture") {
@@ -710,57 +709,301 @@ const updateCustomer = async (userId, body, files, res) => {
     }
   }
 
-  return messages?.successResponse(
-    { customer: resp },
-    res,
-    "Customer profile updated successfully"
-  );
+  try {
+    await User.findByIdAndUpdate(userId, update, {
+      new: true,
+    }).lean();
+    return { success: true, data: resp };
+  } catch (err) {
+    logger.error("Customer update error:", err);
+    return { success: false, error: err.message };
+  }
 };
 
-const adminLoginService = catchAsync(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return messages.insufficientParameters(res, "Email and Password are required");
-  }
-  const user = await User.findOne({ email, isActive: true });
- 
-  if (!user) {
-    return messages.recordNotFound(res, "Admin not found");
-  }
-  const adminRole = await Role.findOne({ code: ROLE.SUPER_ADMIN }).lean();
-  if (!adminRole?._id) {
-    return messages.recordNotFound(res, "Admin role not found in system");
+const addCustomerAddress = async (userId, body) => {
+  if (!userId) return { success: false, notFound: true };
+  const {
+    addressLine1,
+    addressLine2,
+    city,
+    state,
+    pincode,
+    landmark,
+    addressType,
+    isDefault,
+  } = body;
+
+  if (!addressLine1 || !city || !state || !pincode) {
+    return {
+      success: false,
+      error: "Address line 1, city, state, and pincode are required",
+    };
   }
 
-  const isPasswordMatched = await user.isPasswordMatch(password);
-  if (!isPasswordMatched) {
-    return messages.wrongPassword(res,  "Incorrect password");
-  }
-  try {
-    const tokenData = await generateToken(
-      user,
-      req.headers["user-agent"] || "Unknown Device"
-    );
+  const customer = await User.findById(userId).lean();
+  if (!customer) return { success: false, notFound: true };
 
-  const data = {
-    id: user._id,
-    email: user.email,
-    mobNo: user.mobNo,
-    name: `${user.firstName} ${user.lastName}`,
-    roles: [{ roleId: adminRole._id, code: adminRole?.code }],
-    token: tokenData.token,
-    refreshToken: tokenData.refreshToken,
-    validateTill: tokenData.validateTill,
+  const newAddress = {
+    addressLine1,
+    addressLine2: addressLine2 || "",
+    city,
+    state,
+    pincode,
+    landmark: landmark || "",
+    addressType: addressType || "home",
+    isDefault: isDefault || false,
   };
 
-  return messages.loginSuccess(data, res, {message: "Admin logged in successfully"});
-  } catch (error) {
-    logger.error("Error logging in admin: ", error);
-    return messages.internalServerError(res, {message: "Error logging in admin"});
+  if (isDefault) {
+    const updatedAddresses = customer.customerAddress.map((addr) => ({
+      ...addr,
+      isDefault: false,
+    }));
+    updatedAddresses.push(newAddress);
+
+    await User.findByIdAndUpdate(userId, { customerAddress: updatedAddresses });
+  } else {
+    await User.findByIdAndUpdate(userId, {
+      $push: { customerAddress: newAddress },
+    });
   }
-});
 
+  return { success: true, data: newAddress };
+};
 
+const updateCustomerAddress = async (userId, addressId, body) => {
+  if (!userId) return { success: false, notFound: true };
+  if (!addressId) return { success: false, error: "Address ID is required" };
+
+  const customer = await User.findById(userId).lean();
+  if (!customer) return { success: false, notFound: true };
+
+  const cleanAddressId = String(addressId).trim();
+  const addressIndex = customer.customerAddress.findIndex(
+    (addr) => String(addr._id) === cleanAddressId
+  );
+  if (addressIndex === -1)
+    return { success: false, error: "Address not found" };
+
+  const currentAddr = customer.customerAddress[addressIndex];
+  const updatedAddress = {
+    ...currentAddr,
+    ...body,
+  };
+
+  let updatedAddresses;
+  if (body.isDefault) {
+    updatedAddresses = customer.customerAddress.map((addr, i) => ({
+      ...addr,
+      isDefault: i === addressIndex,
+    }));
+  } else {
+    updatedAddresses = [...customer.customerAddress];
+    updatedAddresses[addressIndex] = updatedAddress;
+  }
+
+  await User.findByIdAndUpdate(userId, { customerAddress: updatedAddresses });
+  return { success: true, data: updatedAddress };
+};
+
+const deleteCustomerAddress = async (userId, addressId) => {
+  if (!userId) return { success: false, notFound: true };
+  if (!addressId) return { success: false, error: "Address ID is required" };
+
+  const customer = await User.findById(userId).lean();
+  if (!customer) return { success: false, notFound: true };
+
+  const addressExists = customer.customerAddress.some(
+    (addr) => addr._id.toString() === addressId
+  );
+
+  if (!addressExists) return { success: false, error: "Address not found" };
+
+  await User.findByIdAndUpdate(userId, {
+    $pull: { customerAddress: { _id: addressId } },
+  });
+  return { success: true };
+};
+
+const adminLoginService = async (email, password, userAgent) => {
+  try {
+    if (!email || !password) {
+      return {
+        success: false,
+        validation: true,
+        error: "Email and Password are required",
+      };
+    }
+
+    const user = await User.findOne({ email, isActive: true });
+    if (!user)
+      return { success: false, notFound: true, error: "Admin not found" };
+
+    const adminRole = await Role.findOne({ code: ROLE.SUPER_ADMIN }).lean();
+    if (!adminRole?._id)
+      return {
+        success: false,
+        notFound: true,
+        error: "Admin role not found in system",
+      };
+
+    const isPasswordMatched = await user.isPasswordMatch(password);
+    if (!isPasswordMatched)
+      return { success: false, forbidden: true, error: "Incorrect password" };
+
+    const tokenData = await generateToken(user, userAgent || "Unknown Device");
+
+    const data = {
+      id: user._id,
+      email: user.email,
+      mobNo: user.mobNo,
+      name: `${user.firstName} ${user.lastName}`,
+      roles: [{ roleId: adminRole._id, code: adminRole.code }],
+      token: tokenData.token,
+      refreshToken: tokenData.refreshToken,
+      validateTill: tokenData.validateTill,
+    };
+
+    return { success: true, data };
+  } catch (error) {
+    logger.error("Admin login error:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+const setNewPassword = async (id, newPassword, User) => {
+  try {
+    await User.updateOne(
+      { _id: id, "passwords.isActive": true },
+      { $set: { "passwords.$.isActive": false } }
+    );
+
+    const hashedPassword = await bcrypt.hash(newPassword, 8);
+    const passwordObj = {
+      pass: hashedPassword,
+      salt: hashedPassword.slice(7, 29),
+      isActive: true,
+      createdAt: new Date(),
+    };
+
+    await User.updateOne(
+      { _id: id },
+      {
+        $push: { passwords: passwordObj },
+        $set: { canChangePass: true },
+      }
+    );
+
+    return true;
+  } catch (error) {
+    logger.error("❌ Error in setNewPassword:", error);
+    throw error;
+  }
+};
+
+const forgotPassword = async (email) => {
+  try {
+    const user = await User.findOne({
+      email,
+      deletedAt: { $exists: false },
+    }).select("-passwords -tokens");
+
+    if (!user)
+      return { success: false, notFound: true, error: "User not found" };
+    if (!user.isActive)
+      return {
+        success: false,
+        forbidden: true,
+        error: "User account is deactivated",
+      };
+
+    const OTP = generateOTP();
+    const expireTime = moment().add(1, "hour").format("YYYY-MM-DD HH:mm:ss");
+
+    await User.findByIdAndUpdate(user._id, {
+      resetPassword: { code: OTP, expireTime },
+    });
+
+    const html = `
+      <div style="font-family:sans-serif;line-height:1.6">
+        <h3>Hello ${user.firstName || user.name || "User"},</h3>
+        <p>Your password reset OTP is:</p>
+        <h2>${OTP}</h2>
+        <p>This OTP will expire in 1 hour.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+      </div>
+    `;
+
+    await sendEmail(user.email, "Password Reset Request", html);
+
+    return {
+      success: true,
+      data: { message: "Reset password OTP sent successfully" },
+    };
+  } catch (error) {
+    logger.error("Forgot password error:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+const resetPassword = async (email, otp, newPassword) => {
+  try {
+    const user = await User.findOne({ email });
+    if (!user)
+      return { success: false, notFound: true, error: "User not found" };
+
+    const { code, expireTime } = user.resetPassword || {};
+    if (!code || code !== otp)
+      return { success: false, forbidden: true, error: "Invalid OTP" };
+
+    if (moment().isAfter(moment(expireTime)))
+      return { success: false, forbidden: true, error: "OTP expired" };
+
+    const result = await setNewPassword(user._id, newPassword, User);
+    if (!result) return { success: false, error: "Password reset failed" };
+
+    await User.findByIdAndUpdate(user._id, { $unset: { resetPassword: "" } });
+
+    return { success: true, data: { message: "Password reset successfully" } };
+  } catch (error) {
+    logger.error("Reset password error:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+const changePassword = async (userId, oldPassword, newPassword) => {
+  try {
+    if (!oldPassword || !newPassword)
+      return {
+        success: false,
+        validation: true,
+        error: "Old and new password are required",
+      };
+
+    const user = await User.findById(userId);
+    if (!user)
+      return { success: false, notFound: true, error: "User not found" };
+
+    const isMatch = await user.isPasswordMatch(oldPassword);
+    if (!isMatch)
+      return {
+        success: false,
+        forbidden: true,
+        error: "Old password incorrect",
+      };
+
+    const result = await setNewPassword(user._id, newPassword, User);
+    if (!result) return { success: false, error: "Failed to update password" };
+
+    return {
+      success: true,
+      data: { message: "Password changed successfully" },
+    };
+  } catch (error) {
+    logger.error("Change admin password error:", error);
+    return { success: false, error: error.message };
+  }
+};
 
 const logoutUser = catchAsync(async (req, res) => {
   const authHeader = req.headers.authorization;
@@ -773,13 +1016,12 @@ const logoutUser = catchAsync(async (req, res) => {
     return messages.unAuthorizedRequest("Invalid or expired token", res);
   }
   await removeToken(decoded.id, token);
-  return messages.logoutSuccessfull(
+  return messages.logoutSuccessful(
     { message: "Logged out" },
     res,
     "Logged out successfully"
   );
 });
-
 
 module.exports = {
   createVendor,
@@ -792,5 +1034,11 @@ module.exports = {
   updateVendor,
   updateDeliveryPartner,
   updateCustomer,
-  adminLoginService
+  adminLoginService,
+  changePassword,
+  resetPassword,
+  forgotPassword,
+  updateCustomerAddress,
+  deleteCustomerAddress,
+  addCustomerAddress,
 };

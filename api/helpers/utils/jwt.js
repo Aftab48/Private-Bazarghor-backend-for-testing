@@ -72,9 +72,7 @@ exports.cleanExpiredTokens = async (userId) => {
 
 exports.removeToken = async (userId, token) => {
   await User.findByIdAndUpdate(userId, {
-    $pull: {
-      tokens: { token: token },
-    },
+    $pull: { tokens: { token: token } },
   });
 };
 
