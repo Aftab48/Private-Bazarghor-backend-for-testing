@@ -86,6 +86,10 @@ const schema = new Schema(
     pincode: { type: String }, //user pincode
     vehicleNo: { type: String }, //user vehicle No
     driverLicenseNo: { type: String }, //user driver license No
+    vehicleType: { 
+      type: String, 
+      enum: ["cycle", "bike"], 
+    }, //vehicle type for delivery partner
     profileCompleted: { type: Number, min: 0, max: 100, default: 0 }, // how much user's profile is completed.
     tokens: [
       {
@@ -93,6 +97,12 @@ const schema = new Schema(
         validateTill: { type: Date },
         refreshToken: { type: String },
         deviceDetail: { type: String },
+        reset: {
+          token: { type: String }, //reset password token
+          email: { type: String }, //email
+          salt: { type: String }, //password salt
+          when: { type: Date }, // when reset password was created (ISO)
+        },
       },
     ],
 
@@ -125,6 +135,10 @@ const schema = new Schema(
     profilePicture: fileSchema,
 
     vehicleDetails: {
+      vehicleType: { 
+        type: String, 
+        enum: ["cycle", "bike"], 
+      },
       vehicleNo: { type: String },
       driverLicenseNo: { type: String },
       vehiclePictures: { type: [fileSchema], default: [] },
@@ -170,7 +184,11 @@ schema.pre("save", async function (next) {
       this?.lastName || ""
     }`;
   }
-  if (this.passwords && this.passwords.length > 0 && this.isModified('passwords')) {
+  if (
+    this.passwords &&
+    this.passwords.length > 0 &&
+    this.isModified("passwords")
+  ) {
     const pass = await bcrypt.hash(this.passwords[0].pass, 8);
     const obj = {
       pass: pass,
@@ -187,24 +205,23 @@ schema.pre("save", async function (next) {
 // Add middleware for findOneAndUpdate to handle password hashing
 schema.pre("findOneAndUpdate", async function (next) {
   const update = this.getUpdate();
-  
-  if (update.$set && update.$set.passwords && update.$set.passwords.length > 0) {
-    const passwordData = update.$set.passwords[0].pass;
-    // Only hash if password is provided and not empty
-    if (passwordData && passwordData.trim().length > 0) {
-      const pass = await bcrypt.hash(passwordData, 8);
-      update.$set.passwords = [{
+
+  if (
+    update.$set &&
+    update.$set.passwords &&
+    update.$set.passwords.length > 0
+  ) {
+    const pass = await bcrypt.hash(update.$set.passwords[0].pass, 8);
+    update.$set.passwords = [
+      {
         pass: pass,
         salt: pass.slice(7, 29),
         isActive: true,
         createdAt: new Date(),
-      }];
-    } else {
-      // If no password provided, remove the passwords field
-      delete update.$set.passwords;
-    }
+      },
+    ];
   }
-  
+
   next();
 });
 

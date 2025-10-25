@@ -15,21 +15,21 @@ global.logger = require("./api/helpers/utils/logger");
 
 // CORS Configuration - Allow frontend to access API
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://bazarghor-temp-web-frontend.vercel.app",
+  'http://localhost:5173',
+  'https://bazarghor-temp-web-frontend.vercel.app'
 ];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
+    res.header('Access-Control-Allow-Origin', origin);
   }
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   // Handle preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   next();
