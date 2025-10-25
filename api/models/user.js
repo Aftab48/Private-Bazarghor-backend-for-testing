@@ -86,6 +86,10 @@ const schema = new Schema(
     pincode: { type: String }, //user pincode
     vehicleNo: { type: String }, //user vehicle No
     driverLicenseNo: { type: String }, //user driver license No
+    vehicleType: { 
+      type: String, 
+      enum: ["cycle", "bike"], 
+    }, //vehicle type for delivery partner
     profileCompleted: { type: Number, min: 0, max: 100, default: 0 }, // how much user's profile is completed.
     tokens: [
       {
@@ -131,6 +135,10 @@ const schema = new Schema(
     profilePicture: fileSchema,
 
     vehicleDetails: {
+      vehicleType: { 
+        type: String, 
+        enum: ["cycle", "bike"], 
+      },
       vehicleNo: { type: String },
       driverLicenseNo: { type: String },
       vehiclePictures: { type: [fileSchema], default: [] },

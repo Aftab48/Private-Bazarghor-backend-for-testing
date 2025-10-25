@@ -149,6 +149,7 @@ const createDeliveryPartner = async (req) => {
     mobNo,
     dob,
     gender,
+    vehicleType,
     driverLicenseNo,
     vehicleNo,
   } = req.body;
@@ -176,8 +177,11 @@ const createDeliveryPartner = async (req) => {
   }
 
   const orConditions = [{ email }];
-  if (vehicleNo) orConditions.push({ vehicleNo });
-  if (driverLicenseNo) orConditions.push({ driverLicenseNo });
+  // Only check for vehicle/license conflicts if vehicleType is bike
+  if (vehicleType === "bike") {
+    if (vehicleNo) orConditions.push({ vehicleNo });
+    if (driverLicenseNo) orConditions.push({ driverLicenseNo });
+  }
 
   const existingUser = await User.findOne({
     $or: orConditions,
@@ -202,14 +206,14 @@ const createDeliveryPartner = async (req) => {
         message: "Mobile number already registered",
       });
     }
-    if (vehicleNo && existingUser.vehicleNo === vehicleNo) {
+    if (vehicleType === "bike" && vehicleNo && existingUser.vehicleNo === vehicleNo) {
       conflicts.push({
         field: "vehicleNo",
         value: existingUser.vehicleNo,
         message: "Vehicle number already registered",
       });
     }
-    if (driverLicenseNo && existingUser.driverLicenseNo === driverLicenseNo) {
+    if (vehicleType === "bike" && driverLicenseNo && existingUser.driverLicenseNo === driverLicenseNo) {
       conflicts.push({
         field: "driverLicenseNo",
         value: existingUser.driverLicenseNo,
@@ -241,8 +245,7 @@ const createDeliveryPartner = async (req) => {
     mobNo,
     dob,
     gender,
-    driverLicenseNo,
-    vehicleNo,
+    vehicleType,
     passwords: [{ pass: password }],
     roles: [{ roleId: deliveryRole._id, code: deliveryRole?.code }],
     isActive: true,
@@ -251,15 +254,40 @@ const createDeliveryPartner = async (req) => {
     termsAndCondition: false,
   };
 
+  // Only add vehicle and license details if vehicleType is bike
+  if (vehicleType === "bike") {
+    partnerData.driverLicenseNo = driverLicenseNo;
+    partnerData.vehicleNo = vehicleNo;
+  }
+
   if (req.files?.vehiclePictures?.length) {
     const vps = req.files.vehiclePictures.map((file) =>
       FileService.generateFileObject(file)
     );
     partnerData.vehiclePictures = vps;
     partnerData.vehicleDetails = {
+      vehicleType,
+      vehiclePictures: vps,
+    };
+    
+    // Only add vehicle and license to vehicleDetails if type is bike
+    if (vehicleType === "bike") {
+      partnerData.vehicleDetails.vehicleNo = vehicleNo;
+      partnerData.vehicleDetails.driverLicenseNo = driverLicenseNo;
+    }
+  } else if (vehicleType === "bike") {
+    // Create vehicleDetails even without pictures for bike
+    partnerData.vehicleDetails = {
+      vehicleType,
       vehicleNo,
       driverLicenseNo,
-      vehiclePictures: vps,
+      vehiclePictures: [],
+    };
+  } else {
+    // For cycle, just store the vehicle type
+    partnerData.vehicleDetails = {
+      vehicleType,
+      vehiclePictures: [],
     };
   }
 
@@ -281,26 +309,33 @@ const createDeliveryPartner = async (req) => {
       req.headers["user-agent"] || "Unknown Device"
     );
 
+    const responseData = {
+      partner: {
+        _id: partner._id,
+        firstName: partner.firstName,
+        lastName: partner.lastName,
+        email: partner.email,
+        mobNo: partner.mobNo,
+        roles: partner.roles,
+        profileCompleted: partner.profileCompleted,
+        vehicleType: partner.vehicleType,
+        dob: formatDate(partner.dob),
+        gender: partner.gender,
+      },
+      token: tokenData.token,
+      refreshToken: tokenData.refreshToken,
+      validateTill: tokenData.validateTill,
+    };
+
+    // Only include vehicle details in response if vehicleType is bike
+    if (partner.vehicleType === "bike") {
+      responseData.partner.vehicleNo = partner.vehicleNo;
+      responseData.partner.driverLicenseNo = partner.driverLicenseNo;
+    }
+
     return {
       success: true,
-      data: {
-        partner: {
-          _id: partner._id,
-          firstName: partner.firstName,
-          lastName: partner.lastName,
-          email: partner.email,
-          mobNo: partner.mobNo,
-          roles: partner.roles,
-          profileCompleted: partner.profileCompleted,
-          vehicleNo: partner.vehicleNo,
-          driverLicenseNo: partner.driverLicenseNo,
-          dob: formatDate(partner.dob),
-          gender: partner.gender,
-        },
-        token: tokenData.token,
-        refreshToken: tokenData.refreshToken,
-        validateTill: tokenData.validateTill,
-      },
+      data: responseData,
     };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
@@ -430,6 +465,7 @@ const updateDeliveryPartner = async (userId, body, files) => {
     "email",
     "dob",
     "gender",
+    "vehicleType",
     "driverLicenseNo",
     "vehicleNo",
   ];
@@ -444,13 +480,41 @@ const updateDeliveryPartner = async (userId, body, files) => {
     }
   }
 
+  // Determine the vehicle type (use updated value or existing)
+  const vehicleType = update.vehicleType || user.vehicleType;
+
+  // If changing to cycle from bike, clear vehicle and license fields
+  if (update.vehicleType === "cycle" && user.vehicleType === "bike") {
+    update.vehicleNo = null;
+    update.driverLicenseNo = null;
+  }
+
+  // Validate that bike users provide vehicle and license details
+  if (vehicleType === "bike") {
+    const finalVehicleNo = update.vehicleNo || user.vehicleNo;
+    const finalLicenseNo = update.driverLicenseNo || user.driverLicenseNo;
+    
+    if (!finalVehicleNo) {
+      return {
+        success: false,
+        error: "Vehicle number is required for bike type",
+      };
+    }
+    if (!finalLicenseNo) {
+      return {
+        success: false,
+        error: "Driver license number is required for bike type",
+      };
+    }
+  }
+
   // files handling - allow multiple vehicle pictures
   if (files?.vehiclePictures?.length) {
     const vps = files.vehiclePictures.map((f) =>
       FileService.generateFileObject(f)
     );
     update.vehiclePictures = vps;
-    update.vehicleDetails = update.vehicleDetails || {};
+    update.vehicleDetails = update.vehicleDetails || user.vehicleDetails || {};
     update.vehicleDetails.vehiclePictures = vps;
   }
   if (files?.profilePicture?.[0]) {
@@ -468,8 +532,25 @@ const updateDeliveryPartner = async (userId, body, files) => {
     };
   }
 
+  // Update vehicleDetails to match vehicleType
+  if (update.vehicleType || update.vehicleNo || update.driverLicenseNo) {
+    update.vehicleDetails = update.vehicleDetails || user.vehicleDetails || {};
+    update.vehicleDetails.vehicleType = vehicleType;
+    
+    if (vehicleType === "bike") {
+      update.vehicleDetails.vehicleNo = update.vehicleNo || user.vehicleNo;
+      update.vehicleDetails.driverLicenseNo = update.driverLicenseNo || user.driverLicenseNo;
+    } else {
+      // For cycle, remove vehicle and license from vehicleDetails
+      delete update.vehicleDetails.vehicleNo;
+      delete update.vehicleDetails.driverLicenseNo;
+    }
+  }
+
   // sync flat vehicle and driver fields from vehicleDetails if provided
   if (update.vehicleDetails) {
+    if (update.vehicleDetails.vehicleType)
+      update.vehicleType = update.vehicleDetails.vehicleType;
     if (update.vehicleDetails.vehicleNo)
       update.vehicleNo = update.vehicleDetails.vehicleNo;
     if (update.vehicleDetails.driverLicenseNo)
@@ -488,6 +569,9 @@ const updateDeliveryPartner = async (userId, body, files) => {
       resp.profilePicture = updated.profilePicture;
     } else if (k === "vehiclePictures" || k === "vehicleDetails") {
       resp.vehiclePictures = updated.vehiclePictures;
+      if (Object.prototype.hasOwnProperty.call(update, "vehicleType")) {
+        resp.vehicleType = updated.vehicleType;
+      }
       if (Object.prototype.hasOwnProperty.call(update, "vehicleNo")) {
         resp.vehicleNo = updated.vehicleNo;
       }

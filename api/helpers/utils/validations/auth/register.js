@@ -148,28 +148,49 @@ const createDeliveryPartner = joi
       .required()
       .error(new Error("Gender must be one of: male, female, or other.")),
 
-    // 🔹 Driver & Vehicle Info
+    // 🔹 Vehicle Type (Required)
+    vehicleType: joi
+      .string()
+      .valid("cycle", "bike")
+      .required()
+      .error(new Error("Vehicle type is required and must be either cycle or bike.")),
+
+    // 🔹 Driver & Vehicle Info (Conditional - Required only for bike)
     driverLicenseNo: joi
       .string()
-      .required()
-      .min(5)
-      .max(30)
-      .error(
-        new Error(
-          "Driver license number is required and must be between 5–30 characters."
-        )
-      ),
+      .when("vehicleType", {
+        is: "bike",
+        then: joi
+          .string()
+          .required()
+          .min(5)
+          .max(30)
+          .messages({
+            "string.empty": "Driver license number is required for bike.",
+            "string.min": "Driver license number must be at least 5 characters.",
+            "string.max": "Driver license number must be at most 30 characters.",
+            "any.required": "Driver license number is required for bike.",
+          }),
+        otherwise: joi.string().allow("", null).optional(),
+      }),
 
     vehicleNo: joi
       .string()
-      .required()
-      .min(5)
-      .max(20)
-      .error(
-        new Error(
-          "Vehicle number is required and must be between 5–20 characters."
-        )
-      ),
+      .when("vehicleType", {
+        is: "bike",
+        then: joi
+          .string()
+          .required()
+          .min(5)
+          .max(20)
+          .messages({
+            "string.empty": "Vehicle number is required for bike.",
+            "string.min": "Vehicle number must be at least 5 characters.",
+            "string.max": "Vehicle number must be at most 20 characters.",
+            "any.required": "Vehicle number is required for bike.",
+          }),
+        otherwise: joi.string().allow("", null).optional(),
+      }),
 
     // 🔹 Consent
     consentAgree: joi
