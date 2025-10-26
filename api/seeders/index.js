@@ -1,6 +1,6 @@
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const roleSeeder = require("../services/role");
-const adminSeeder = require("../services/staff");
+const { adminSeeder } = require("../services/staff");
 
 const runSeeders = catchAsync(async () => {
   logger.info("🚀 Running all seeders...");

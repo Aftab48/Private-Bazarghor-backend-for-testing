@@ -14,9 +14,13 @@ const {
   resendOTP,
 } = require("../../services/otp.service");
 const validate = require("../../middlewares/validate");
-const { uploadVendorFiles } = require("../../middlewares/upload.middleware");
+const {
+  uploadVendorFiles,
+  upload,
+} = require("../../middlewares/upload.middleware");
 const {
   registerVendor,
+  loginUser,
 } = require("../../helpers/utils/validations/auth/index");
 
 router.post(
@@ -35,8 +39,13 @@ router.put(
 );
 
 router.post("/logout", authMiddleware([]), logoutUser);
-router.post("/login/send-otp", sendOTP);
-router.post("/login/verify", verifyOTPAndLogin);
-router.post("/login/resend", resendOTP);
+router.post("/login/send-otp", upload.none(), validate(loginUser), sendOTP);
+router.post(
+  "/login/verify",
+  upload.none(),
+  validate(loginUser),
+  verifyOTPAndLogin
+);
+router.post("/login/resend", upload.none(), validate(loginUser), resendOTP);
 
 module.exports = router;

@@ -36,8 +36,13 @@ const uploadDeliveryPartnerFiles = upload.fields([
 const uploadCustomerFiles = upload.fields([
   { name: "profilePicture", maxCount: 1 },
 ]);
+const uploadAdminProfile = upload.fields([
+  { name: "profilePicture", maxCount: 1 },
+]);
 module.exports = {
   uploadVendorFiles,
   uploadDeliveryPartnerFiles,
   uploadCustomerFiles,
+  uploadAdminProfile,
+  upload,
 };

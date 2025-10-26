@@ -14,6 +14,7 @@ const transporter = nodemailer.createTransport({
 /**
  * Send email with given subject and HTML body
  */
+
 const sendEmail = async (to, subject, html) => {
   try {
     await transporter.sendMail({

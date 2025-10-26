@@ -1,8 +1,12 @@
-const { registerVendor, createDeliveryPartner } = require("./register");
+const {
+  registerVendor,
+  createDeliveryPartner,
+  createAdminsValidation,
+  updateAdminsValidation,
+} = require("./register");
 const { loginAdmin, loginUser, adminUpdate } = require("./login");
 const { changePassword } = require("./changePassword");
-const { resetPasswordCode} = require("./respassword")
- 
+const { resetPasswordCode } = require("./respassword");
 
 module.exports = {
   loginAdmin,
@@ -11,5 +15,7 @@ module.exports = {
   registerVendor,
   createDeliveryPartner,
   changePassword,
-  resetPasswordCode
+  resetPasswordCode,
+  createAdminsValidation,
+  updateAdminsValidation,
 };

@@ -5,6 +5,8 @@ const {
   changePassword,
   resetPassword,
   forgotPassword,
+  getAdmins,
+  updateAdmin,
 } = require("../../services/auth");
 
 const adminLogin = catchAsync(async (req, res) => {
@@ -70,9 +72,42 @@ const changeAdminPassword = catchAsync(async (req, res) => {
   return messages.internalServerError(res, { message: result.error });
 });
 
+const getAdminsController = catchAsync(async (req, res) => {
+  const userId = req.user;
+  const result = await getAdmins(userId);
+
+  if (result?.notFound) {
+    return messages.notFound("User not found", res);
+  }
+  return messages.successResponse(
+    result.data,
+    res,
+    "Profile data fetched successfully"
+  );
+});
+
+const updateAdminController = catchAsync(async (req, res) => {
+  const userId = req.user;
+  const result = await updateAdmin(userId, req.body, req.files);
+
+  if (result?.success) {
+    return messages.successResponse(
+      result?.data,
+      res,
+      "Profile updated successfully"
+    );
+  } else if (result?.data) {
+    return messages.recordNotFound(res, "User not found");
+  } else {
+    return messages.failureResponse(result.error || "Update failed", res);
+  }
+});
+
 module.exports = {
   adminLogin,
   changeAdminPassword,
   forgotPasswordController,
   resetPasswordController,
+  getAdminsController,
+  updateAdminController,
 };

@@ -1,5 +1,7 @@
 const { verifyToken } = require("../helpers/utils/jwt");
 const messages = require("../helpers/utils/messages");
+const { ROLE } = require("../../config/constants/authConstant");
+const User = require("../models/user");
 
 exports.authMiddleware = (allowedRoles = []) => {
   return async (req, res, next) => {
@@ -27,4 +29,26 @@ exports.authMiddleware = (allowedRoles = []) => {
     }
     next();
   };
+};
+
+exports.checkSuperAdmin = async (req, res, next) => {
+  try {
+    const userId = req.user;
+    console.log("userId:", userId);
+
+    const user = await User.findById(userId).lean();
+    if (!user) return messages.recordNotFound(res, "User not found");
+
+    const hasSuperRole = user.roles?.some((r) => r.code === ROLE.SUPER_ADMIN);
+    if (!hasSuperRole) {
+      return messages.forbidden(res, "Access denied: Super Admins only");
+    }
+
+    next();
+  } catch (err) {
+    console.error("checkSuperAdmin error:", err);
+    return messages.internalServerError(res, {
+      message: "Authorization failed",
+    });
+  }
 };

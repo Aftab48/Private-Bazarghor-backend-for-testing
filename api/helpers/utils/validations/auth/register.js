@@ -153,44 +153,32 @@ const createDeliveryPartner = joi
       .string()
       .valid("cycle", "bike")
       .required()
-      .error(new Error("Vehicle type is required and must be either cycle or bike.")),
+      .error(
+        new Error("Vehicle type is required and must be either cycle or bike.")
+      ),
 
     // 🔹 Driver & Vehicle Info (Conditional - Required only for bike)
-    driverLicenseNo: joi
-      .string()
-      .when("vehicleType", {
-        is: "bike",
-        then: joi
-          .string()
-          .required()
-          .min(5)
-          .max(30)
-          .messages({
-            "string.empty": "Driver license number is required for bike.",
-            "string.min": "Driver license number must be at least 5 characters.",
-            "string.max": "Driver license number must be at most 30 characters.",
-            "any.required": "Driver license number is required for bike.",
-          }),
-        otherwise: joi.string().allow("", null).optional(),
+    driverLicenseNo: joi.string().when("vehicleType", {
+      is: "bike",
+      then: joi.string().required().min(5).max(30).messages({
+        "string.empty": "Driver license number is required for bike.",
+        "string.min": "Driver license number must be at least 5 characters.",
+        "string.max": "Driver license number must be at most 30 characters.",
+        "any.required": "Driver license number is required for bike.",
       }),
+      otherwise: joi.string().allow("", null).optional(),
+    }),
 
-    vehicleNo: joi
-      .string()
-      .when("vehicleType", {
-        is: "bike",
-        then: joi
-          .string()
-          .required()
-          .min(5)
-          .max(20)
-          .messages({
-            "string.empty": "Vehicle number is required for bike.",
-            "string.min": "Vehicle number must be at least 5 characters.",
-            "string.max": "Vehicle number must be at most 20 characters.",
-            "any.required": "Vehicle number is required for bike.",
-          }),
-        otherwise: joi.string().allow("", null).optional(),
+    vehicleNo: joi.string().when("vehicleType", {
+      is: "bike",
+      then: joi.string().required().min(5).max(20).messages({
+        "string.empty": "Vehicle number is required for bike.",
+        "string.min": "Vehicle number must be at least 5 characters.",
+        "string.max": "Vehicle number must be at most 20 characters.",
+        "any.required": "Vehicle number is required for bike.",
       }),
+      otherwise: joi.string().allow("", null).optional(),
+    }),
 
     // 🔹 Consent
     consentAgree: joi
@@ -200,7 +188,47 @@ const createDeliveryPartner = joi
   })
   .unknown(false);
 
+const createAdminsValidation = joi
+  .object({
+    firstName: joi.string().trim().min(2).max(50).required(),
+    lastName: joi.string().trim().allow("", null).max(50),
+    email: joi.string().trim().email().required().messages({
+      "string.email": "Invalid email format",
+      "any.required": "Email is required",
+    }),
+    mobNo: joi
+      .string()
+      .trim()
+      .pattern(/^[0-9]{10}$/)
+      .required()
+      .messages({
+        "string.pattern.base": "Mobile number must be 10 digits",
+        "any.required": "Mobile number is required",
+      }),
+    roleType: joi.string().trim().required().messages({
+      "any.required": "Role type is required",
+    }),
+  })
+  .unknown(false);
+
+ const updateAdminsValidation = joi.object({
+    firstName: joi.string().trim().min(2).max(50),
+    lastName: joi.string().trim().allow("", null).max(50),
+    email: joi.string().trim().email().optional(),
+    mobNo: joi.string()
+      .trim()
+      .pattern(/^[0-9]{10}$/)
+      .message("Mobile number must be 10 digits")
+      .optional(),
+    isActive: joi.boolean().optional(),
+  })
+    .min(1) // ensure at least one field is sent
+    .unknown(false);
+
+
 module.exports = {
   registerVendor,
   createDeliveryPartner,
+  createAdminsValidation,
+  updateAdminsValidation
 };

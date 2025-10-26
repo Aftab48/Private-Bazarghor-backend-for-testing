@@ -46,7 +46,7 @@ const updateDeliveryPartnerController = catchAsync(async (req, res) => {
       res,
       "Profile updated successfully"
     );
-  } else if (result?.notFound) {
+  } else if (result?.data) {
     return messages.recordNotFound(res, "User not found");
   } else {
     return messages.failureResponse(result.error || "Update failed", res);

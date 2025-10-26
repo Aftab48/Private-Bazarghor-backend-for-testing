@@ -11,9 +11,11 @@ const {
 } = require("../../services/otp.service");
 const {
   uploadDeliveryPartnerFiles,
+  upload,
 } = require("../../middlewares/upload.middleware");
 const {
   createDeliveryPartner,
+  loginUser,
 } = require("../../helpers/utils/validations/auth/index");
 const {
   registerDeliveryPartnerController,
@@ -45,8 +47,13 @@ router.put(
 );
 
 // Delivery Partner OTP login (shared OTP service)
-router.post("/login/send-otp", sendOTP);
-router.post("/login/verify", verifyOTPAndLogin);
-router.post("/login/resend", resendOTP);
+router.post("/login/send-otp", upload.none(), validate(loginUser), sendOTP);
+router.post(
+  "/login/verify",
+  upload.none(),
+  validate(loginUser),
+  verifyOTPAndLogin
+);
+router.post("/login/resend", upload.none(), validate(loginUser), resendOTP);
 
 module.exports = router;

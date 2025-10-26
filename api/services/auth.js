@@ -206,14 +206,22 @@ const createDeliveryPartner = async (req) => {
         message: "Mobile number already registered",
       });
     }
-    if (vehicleType === "bike" && vehicleNo && existingUser.vehicleNo === vehicleNo) {
+    if (
+      vehicleType === "bike" &&
+      vehicleNo &&
+      existingUser.vehicleNo === vehicleNo
+    ) {
       conflicts.push({
         field: "vehicleNo",
         value: existingUser.vehicleNo,
         message: "Vehicle number already registered",
       });
     }
-    if (vehicleType === "bike" && driverLicenseNo && existingUser.driverLicenseNo === driverLicenseNo) {
+    if (
+      vehicleType === "bike" &&
+      driverLicenseNo &&
+      existingUser.driverLicenseNo === driverLicenseNo
+    ) {
       conflicts.push({
         field: "driverLicenseNo",
         value: existingUser.driverLicenseNo,
@@ -269,7 +277,7 @@ const createDeliveryPartner = async (req) => {
       vehicleType,
       vehiclePictures: vps,
     };
-    
+
     // Only add vehicle and license to vehicleDetails if type is bike
     if (vehicleType === "bike") {
       partnerData.vehicleDetails.vehicleNo = vehicleNo;
@@ -493,7 +501,7 @@ const updateDeliveryPartner = async (userId, body, files) => {
   if (vehicleType === "bike") {
     const finalVehicleNo = update.vehicleNo || user.vehicleNo;
     const finalLicenseNo = update.driverLicenseNo || user.driverLicenseNo;
-    
+
     if (!finalVehicleNo) {
       return {
         success: false,
@@ -536,10 +544,11 @@ const updateDeliveryPartner = async (userId, body, files) => {
   if (update.vehicleType || update.vehicleNo || update.driverLicenseNo) {
     update.vehicleDetails = update.vehicleDetails || user.vehicleDetails || {};
     update.vehicleDetails.vehicleType = vehicleType;
-    
+
     if (vehicleType === "bike") {
       update.vehicleDetails.vehicleNo = update.vehicleNo || user.vehicleNo;
-      update.vehicleDetails.driverLicenseNo = update.driverLicenseNo || user.driverLicenseNo;
+      update.vehicleDetails.driverLicenseNo =
+        update.driverLicenseNo || user.driverLicenseNo;
     } else {
       // For cycle, remove vehicle and license from vehicleDetails
       delete update.vehicleDetails.vehicleNo;
@@ -715,7 +724,7 @@ const getCustomer = async (userId) => {
   return { success: true, data: user };
 };
 
-const updateCustomer = async (userId, body, files, res) => {
+const updateCustomer = async (userId, body, files) => {
   if (!userId) return { success: false, notFound: true };
   const user = await User.findById(userId).lean();
   if (!user) return { success: false, notFound: true };
@@ -919,39 +928,141 @@ const adminLoginService = async (email, password, userAgent) => {
       };
     }
 
-    const user = await User.findOne({ email, isActive: true });
+    // find user
+    const user = await User.findOne({ email, isActive: true }).lean();
     if (!user)
-      return { success: false, notFound: true, error: "Admin not found" };
-
-    const adminRole = await Role.findOne({ code: ROLE.SUPER_ADMIN }).lean();
-    if (!adminRole?._id)
       return {
         success: false,
         notFound: true,
-        error: "Admin role not found in system",
+        error: "User not found or inactive",
       };
 
-    const isPasswordMatched = await user.isPasswordMatch(password);
+    // allowed admin roles
+    const allowedRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN];
+
+    // extract user roles
+    const userRoleCodes = (user.roles || []).map((r) => r.code);
+
+    // check if any role is allowed
+    const matchedRoleCode = userRoleCodes.find((code) =>
+      allowedRoles.includes(code)
+    );
+
+    if (!matchedRoleCode)
+      return {
+        success: false,
+        forbidden: true,
+        error: "Access denied — not an admin account",
+      };
+
+    // validate password
+    const isPasswordMatched = await User.prototype.isPasswordMatch.call(
+      user,
+      password
+    );
     if (!isPasswordMatched)
       return { success: false, forbidden: true, error: "Incorrect password" };
 
+    // find full role info from DB (for completeness)
+    const roleDoc = await Role.findOne({ code: matchedRoleCode }).lean();
+    if (!roleDoc?._id)
+      return {
+        success: false,
+        notFound: true,
+        error: "Role not found in system",
+      };
+
+    // generate token
     const tokenData = await generateToken(user, userAgent || "Unknown Device");
 
     const data = {
       id: user._id,
       email: user.email,
       mobNo: user.mobNo,
-      name: `${user.firstName} ${user.lastName}`,
-      roles: [{ roleId: adminRole._id, code: adminRole.code }],
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      roles: [{ roleId: roleDoc._id, code: matchedRoleCode }],
       token: tokenData.token,
       refreshToken: tokenData.refreshToken,
       validateTill: tokenData.validateTill,
+      isPrimaryAdmin: matchedRoleCode === ROLE.SUPER_ADMIN,
     };
 
     return { success: true, data };
   } catch (error) {
     logger.error("Admin login error:", error);
     return { success: false, error: error.message };
+  }
+};
+
+const getAdmins = async (userId) => {
+  if (!userId) return { success: false, notFound: true };
+
+  const user = await User.findById(userId)
+    .select(
+      "-passwords -tokens -offNotification -canChangePass -__v -tempRegistration -updatedBy -consentAgree  -createdAt -updatedAt -vehicleDetails  -storeDetails -shopaddress -shopname -tempRegister -mobVerify -resetPassword -customFields -gender -cityNm -vehicleNo -customerAddress"
+    )
+    .lean();
+
+  if (!user) return { success: false, notFound: true };
+
+  return { success: true, data: user };
+};
+
+const updateAdmin = async (userId, body, files) => {
+  try {
+    if (!userId) {
+      return { success: false, notFound: true, error: "User ID missing" };
+    }
+
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return { success: false, notFound: true, error: "Admin not found" };
+    }
+
+    const allowedFields = ["firstName", "lastName", "email", "mobNo"];
+    const update = {};
+    for (const key of allowedFields) {
+      const value = body?.[key];
+      if (value !== undefined && value !== null && value !== "") {
+        update[key] = value;
+      }
+    }
+
+    if (files?.profilePicture?.[0]) {
+      update.profilePicture = FileService.generateFileObject(
+        files.profilePicture[0]
+      );
+    }
+    if (Object.keys(update).length === 0) {
+      return {
+        success: false,
+        notFound: true,
+        error: "No fields provided to update",
+      };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: update },
+      { new: true }
+    )
+      .select("_id firstName lastName email mobNo profilePicture roles")
+      .lean();
+
+    if (!updatedUser) {
+      return { success: false, error: "Failed to update admin" };
+    }
+
+    const resp = { _id: updatedUser._id };
+    for (const key of Object.keys(update)) {
+      resp[key] = updatedUser[key];
+    }
+
+    return { success: true, data: resp };
+  } catch (err) {
+    logger.error("Admin update error:", err);
+    FileService.deleteUploadedFiles(files);
+    return { success: false, error: err.message };
   }
 };
 
@@ -1125,4 +1236,7 @@ module.exports = {
   updateCustomerAddress,
   deleteCustomerAddress,
   addCustomerAddress,
+  setNewPassword,
+  getAdmins,
+  updateAdmin,
 };
