@@ -34,6 +34,7 @@ router.post(
   "/change-password/:id",
   authMiddleware([ROLE.SUPER_ADMIN]),
   validate(changePasswords),
+  upload.none(),
   changeAdminPassword
 );
 router.get("/profile", authMiddleware([ROLE.SUPER_ADMIN]), getAdminsController);

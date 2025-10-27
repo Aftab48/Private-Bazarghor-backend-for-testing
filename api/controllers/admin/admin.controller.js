@@ -88,6 +88,7 @@ const getAdminsController = catchAsync(async (req, res) => {
 
 const updateAdminController = catchAsync(async (req, res) => {
   const userId = req.user;
+  console.log("userId: ", userId);
   const result = await updateAdmin(userId, req.body, req.files);
 
   if (result?.success) {

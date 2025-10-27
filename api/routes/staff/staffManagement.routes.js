@@ -8,17 +8,24 @@ const {
 } = require("../../controllers/staff/staffManagement.controller");
 const {
   updateAdminController,
+  forgotPasswordController,
+  resetPasswordController,
+  changeAdminPassword,
 } = require("../../controllers/admin/admin.controller");
 const {
   adminLogin,
   getAdminsController,
 } = require("../../controllers/admin/admin.controller");
 const { logoutUser } = require("../../services/auth");
+const {
+  changePasswords,
+} = require("../../helpers/utils/validations/auth/changePassword");
 const validate = require("../../middlewares/validate");
 const {
   createAdminsValidation,
   updateAdminsValidation,
   loginAdmin,
+  resetPasswordCode,
 } = require("../../helpers/utils/validations/auth/index");
 const {
   checkSuperAdmin,
@@ -39,9 +46,6 @@ router.post(
   createAdminController
 );
 
-router.post("/login", upload.none(), validate(loginAdmin), adminLogin);
-router.post("/logout", authMiddleware([]), logoutUser);
-
 router.put(
   "/update-admin/:id",
   authMiddleware([ROLE.SUPER_ADMIN]),
@@ -52,14 +56,17 @@ router.put(
 );
 
 router.get(
-  "/get-admin-profile",
-  authMiddleware([ROLE.ADMIN]),
-  getAdminsController
+  "/get-all-admin",
+  authMiddleware([]),
+  checkSuperAdmin,
+  getAllAdminsController
 );
+
 router.get(
-  "/get-sub-admin-profile",
-  authMiddleware([ROLE.SUB_ADMIN]),
-  getAdminsController
+  "/get-adminById/:id",
+  authMiddleware([]),
+  checkSuperAdmin,
+  getAdminByIdController
 );
 
 router.delete(
@@ -68,17 +75,61 @@ router.delete(
   checkSuperAdmin,
   deleteAdminController
 );
+
+//this endpoint of admin and sub admin when he is logged in
+router.post("/login", upload.none(), validate(loginAdmin), adminLogin);
+router.post("/logout", authMiddleware([]), logoutUser);
+
 router.get(
-  "/get-all-admin",
-  authMiddleware([]),
-  checkSuperAdmin,
-  getAllAdminsController
+  "/get-admin-profile",
+  authMiddleware([ROLE.ADMIN]),
+  getAdminsController
 );
+
 router.get(
-  "/get-adminById/:id",
-  authMiddleware([]),
-  checkSuperAdmin,
-  getAdminByIdController
+  "/get-sub-admin-profile",
+  authMiddleware([ROLE.SUB_ADMIN]),
+  getAdminsController
+);
+
+router.put(
+  "/update-admin",
+  authMiddleware([ROLE.ADMIN]),
+  validate(updateAdminsValidation),
+  uploadAdminProfile,
+  updateAdminController
+);
+
+router.put(
+  "/update-sub-admin",
+  authMiddleware([ROLE.SUB_ADMIN]),
+  validate(updateAdminsValidation),
+  uploadAdminProfile,
+  updateAdminController
+);
+
+router.post("/forget-password", upload.none(), forgotPasswordController);
+router.post(
+  "/reset-password",
+  validate(resetPasswordCode),
+  upload.none(),
+  resetPasswordController
+);
+
+router.post(
+  "/admin-change-password/:id",
+  authMiddleware([ROLE.ADMIN]),
+  validate(changePasswords),
+  upload.none(),
+  changeAdminPassword
+);
+
+router.post(
+  "/sub-admin-change-password/:id",
+  authMiddleware([ROLE.SUB_ADMIN]),
+  validate(changePasswords),
+  upload.none(),
+  changeAdminPassword
 );
 
 module.exports = router;
