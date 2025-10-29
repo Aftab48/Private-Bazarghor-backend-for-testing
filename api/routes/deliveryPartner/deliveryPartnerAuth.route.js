@@ -4,56 +4,56 @@ const validate = require("../../middlewares/validate");
 const { logoutUser } = require("../../services/auth");
 const { ROLE } = require("../../../config/constants/authConstant");
 const { authMiddleware } = require("../../middlewares/auth.middleware");
-const {
-  sendOTP,
-  verifyOTPAndLogin,
-  resendOTP,
-} = require("../../services/otp.service");
+const otp = require("../../services/otp.service");
+const validateDeliveryPartner = require("../../helpers/utils/validations/auth/index");
+const updateDeliveryPartnerValidate = require("../../helpers/utils/validations/updates/index");
+const deliveryPartnerController = require("../../controllers/deliveryPartner/deliveryPartner.controller");
 const {
   uploadDeliveryPartnerFiles,
   upload,
 } = require("../../middlewares/upload.middleware");
-const {
-  createDeliveryPartner,
-  loginUser,
-} = require("../../helpers/utils/validations/auth/index");
-const {
-  registerDeliveryPartnerController,
-  getDeliveryPartnerController,
-  updateDeliveryPartnerController,
-} = require("../../controllers/deliveryPartner/deliveryPartner.controller");
 
 router.post(
   "/create-delivery-partner",
-  validate(createDeliveryPartner),
+  validate(validateDeliveryPartner.createDeliveryPartner),
   uploadDeliveryPartnerFiles,
-  registerDeliveryPartnerController
+  deliveryPartnerController.registerDeliveryPartnerController
 );
 
-// Delivery Partner logout
-router.post("/logout", authMiddleware([]), logoutUser);
 router.get(
   "/profile",
   authMiddleware([ROLE.DELIVERY_PARTNER]),
-  getDeliveryPartnerController
+  deliveryPartnerController.getDeliveryPartnerController
 );
 
-// Update profile (partial) - accept files
 router.put(
   "/update-profile",
   authMiddleware([ROLE.DELIVERY_PARTNER]),
+  validate(updateDeliveryPartnerValidate.updateDeliveryPartners),
   uploadDeliveryPartnerFiles,
-  updateDeliveryPartnerController
+  deliveryPartnerController.updateDeliveryPartnerController
 );
 
-// Delivery Partner OTP login (shared OTP service)
-router.post("/login/send-otp", upload.none(), validate(loginUser), sendOTP);
+router.post(
+  "/login/send-otp",
+  upload.none(),
+  validate(validate.loginUser),
+  otp.sendOTP
+);
+
 router.post(
   "/login/verify",
   upload.none(),
-  validate(loginUser),
-  verifyOTPAndLogin
+  validate(validateDeliveryPartner.loginUser),
+  otp.verifyOTPAndLogin
 );
-router.post("/login/resend", upload.none(), validate(loginUser), resendOTP);
+
+router.post(
+  "/login/resend",
+  upload.none(),
+  validate(validateDeliveryPartner.loginUser),
+  otp.resendOTP
+);
+router.post("/logout", authMiddleware([]), logoutUser);
 
 module.exports = router;

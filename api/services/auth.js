@@ -386,14 +386,7 @@ const updateVendor = async (userId, body, files) => {
   const user = await User.findById(userId).lean();
   if (!user) return { success: false, notFound: true };
 
-  const allowedFields = [
-    "firstName",
-    "lastName",
-    "email",
-    "shopname",
-    "pincode",
-    "shopaddress",
-  ];
+  const allowedFields = ["firstName", "lastName", "email", "dob", "gender"];
 
   const update = {};
   for (const key of allowedFields) {
@@ -438,9 +431,6 @@ const updateVendor = async (userId, body, files) => {
     } else if (k === "storePicture") {
       resp.storePicture = updated.storePicture;
     } else if (k === "storeDetails") {
-      if (update.storeDetails.storeName) resp.shopname = updated.shopname;
-      if (update.storeDetails.storeAddress)
-        resp.shopaddress = updated.shopaddress;
       if (update.storeDetails.storePictures)
         resp.storeDetails = {
           storePictures: updated.storeDetails?.storePictures || [],
@@ -473,9 +463,9 @@ const updateDeliveryPartner = async (userId, body, files) => {
     "email",
     "dob",
     "gender",
-    "vehicleType",
-    "driverLicenseNo",
-    "vehicleNo",
+    // "vehicleType",
+    // "driverLicenseNo",
+    // "vehicleNo",
   ];
 
   const update = {};
@@ -729,14 +719,7 @@ const updateCustomer = async (userId, body, files) => {
   const user = await User.findById(userId).lean();
   if (!user) return { success: false, notFound: true };
 
-  const allowedFields = [
-    "firstName",
-    "lastName",
-    "email",
-    "dob",
-    "gender",
-    "customerAddress",
-  ];
+  const allowedFields = ["firstName", "lastName", "email", "dob", "gender"];
 
   const update = {};
   for (const key of allowedFields) {
@@ -745,16 +728,6 @@ const updateCustomer = async (userId, body, files) => {
       body[key] !== undefined
     ) {
       update[key] = body[key];
-    }
-  }
-
-  if (update.customerAddress && Array.isArray(update.customerAddress)) {
-    const hasDefault = update.customerAddress.some((addr) => addr.isDefault);
-    if (hasDefault) {
-      update.customerAddress = update.customerAddress.map((addr) => ({
-        ...addr,
-        isDefault: addr.isDefault || false,
-      }));
     }
   }
 
@@ -772,12 +745,11 @@ const updateCustomer = async (userId, body, files) => {
     };
   }
 
-  let profileCompleted = 20; // Base for name and mobile
+  let profileCompleted = 20;
   if (update.email) profileCompleted += 20;
   if (update.dob) profileCompleted += 20;
   if (update.gender) profileCompleted += 20;
-  if (update.customerAddress && update.customerAddress.length > 0)
-    profileCompleted += 20;
+  profileCompleted += 20;
 
   update.profileCompleted = Math.min(profileCompleted, 100);
 

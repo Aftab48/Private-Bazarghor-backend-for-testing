@@ -3,10 +3,16 @@ const {
   createDeliveryPartner,
   createAdminsValidation,
   updateAdminsValidation,
+  createCustomer,
 } = require("./register");
 const { loginAdmin, loginUser, adminUpdate } = require("./login");
 const { changePassword } = require("./changePassword");
 const { resetPasswordCode } = require("./respassword");
+const {
+  createVendorByAdmin,
+  createDeliveryPartnerByAdmin,
+  createCustomerByAdmin,
+} = require("./userManegment");
 
 module.exports = {
   loginAdmin,
@@ -18,4 +24,8 @@ module.exports = {
   resetPasswordCode,
   createAdminsValidation,
   updateAdminsValidation,
+  createVendorByAdmin,
+  createDeliveryPartnerByAdmin,
+  createCustomer,
+  createCustomerByAdmin,
 };

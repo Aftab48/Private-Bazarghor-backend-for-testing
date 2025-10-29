@@ -149,11 +149,11 @@ const schema = new Schema(
     },
     customerAddress: [
       {
-        addressLine1: { type: String, required: true },
+        addressLine1: { type: String },
         addressLine2: { type: String },
-        city: { type: String, required: true },
-        state: { type: String, required: true },
-        pincode: { type: String, required: true },
+        city: { type: String },
+        state: { type: String },
+        pincode: { type: String },
         landmark: { type: String },
         addressType: {
           type: String,

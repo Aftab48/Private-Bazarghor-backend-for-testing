@@ -1,26 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const {
-  adminLogin,
-  changeAdminPassword,
-  forgotPasswordController,
-  resetPasswordController,
-  getAdminsController,
-  updateAdminController,
-} = require("../../controllers/admin/admin.controller");
+const adminControllers = require("../../controllers/admin/admin.controller");
 const { logoutUser } = require("../../services/auth");
+const { authMiddleware } = require("../../middlewares/auth.middleware");
+const { ROLE } = require("../../../config/constants/authConstant");
+const validate = require("../../middlewares/validate");
+const adminValidate = require("../../helpers/utils/validations/auth/index");
 const {
   changePasswords,
 } = require("../../helpers/utils/validations/auth/changePassword");
-const { authMiddleware } = require("../../middlewares/auth.middleware");
-const { ROLE } = require("../../../config/constants/authConstant");
-logoutUser;
-const validate = require("../../middlewares/validate");
-const {
-  loginAdmin,
-  resetPasswordCode,
-  adminUpdate,
-} = require("../../helpers/utils/validations/auth/index");
 const {
   uploadAdminProfile,
   upload,
@@ -28,28 +16,42 @@ const {
 
 router.use(express.json());
 
-router.post("/login", upload.none(), validate(loginAdmin), adminLogin);
-router.post("/logout", authMiddleware([]), logoutUser);
+router.post(
+  "/login",
+  upload.none(),
+  validate(adminValidate.loginAdmin),
+  adminControllers.adminLogin
+);
+
 router.post(
   "/change-password/:id",
   authMiddleware([ROLE.SUPER_ADMIN]),
   validate(changePasswords),
   upload.none(),
-  changeAdminPassword
+  adminControllers.changeAdminPassword
 );
-router.get("/profile", authMiddleware([ROLE.SUPER_ADMIN]), getAdminsController);
+
+router.get(
+  "/profile",
+  authMiddleware([ROLE.SUPER_ADMIN]),
+  adminControllers.getAdminsController
+);
+
 router.put(
   "/update",
   authMiddleware([ROLE.SUPER_ADMIN]),
-  validate(adminUpdate),
+  validate(adminValidate.adminUpdate),
   uploadAdminProfile,
-  updateAdminController
+  adminControllers.updateAdminController
 );
-router.post("/forget-password", forgotPasswordController);
+
 router.post(
   "/reset-password",
-  validate(resetPasswordCode),
-  resetPasswordController
+  validate(adminValidate.resetPasswordCode),
+  adminControllers.resetPasswordController
 );
+
+router.post("/forget-password", adminControllers.forgotPasswordController);
+router.post("/logout", authMiddleware([]), logoutUser);
 
 module.exports = router;

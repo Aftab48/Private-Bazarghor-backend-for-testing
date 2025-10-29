@@ -48,6 +48,8 @@ const otpRoutes = require("./api/routes/otp.route");
 const customerRoutes = require("./api/routes/customers/customerAuth.route");
 const adminRoutes = require("./api/routes/admin/adminAuth.Route");
 const addStaff = require("./api/routes/staff/staffManagement.routes");
+const addUsers = require("./api/routes/staff/userManegment.routes");
+
 // Use routes
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/delivery-partner", deliveryPartner);
@@ -55,6 +57,7 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/staff", addStaff);
+app.use("/api/users", addUsers);
 
 app.use(
   router.get(

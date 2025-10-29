@@ -1,12 +1,12 @@
 const joi = require("joi");
+const { ROLE } = require("../../../../../config/constants/authConstant");
 
-const registerVendor = joi.object({
-  // Basic Information
+const createVendorByAdmin = joi.object({
   firstName: joi
     .string()
-    .required()
     .min(2)
     .max(50)
+    .required()
     .error(
       new Error("First name is required and must be between 2-50 characters")
     ),
@@ -38,20 +38,6 @@ const registerVendor = joi.object({
     .max(50)
     .error(new Error("Password must be between 6-50 characters")),
 
-  // Personal Details
-  gender: joi
-    .string()
-    .valid("male", "female", "other")
-    .optional()
-    .allow(null, "")
-    .error(new Error("Gender must be one of: male, female, other")),
-
-  dob: joi
-    .date()
-    .optional()
-    .allow(null)
-    .error(new Error("Date of birth must be a valid date")),
-
   cityNm: joi
     .string()
     .optional()
@@ -62,7 +48,6 @@ const registerVendor = joi.object({
   pincode: joi
     .string()
     .regex(/^[0-9]{6}$/)
-    .required()
     .messages({
       "string.empty": "Pincode is required",
       "string.pattern.base": "Pincode must be exactly 6 digits",
@@ -71,7 +56,6 @@ const registerVendor = joi.object({
   // Shop/Business Details
   shopname: joi
     .string()
-    .required()
     .min(2)
     .max(100)
     .error(
@@ -80,7 +64,6 @@ const registerVendor = joi.object({
 
   shopaddress: joi
     .string()
-    .required()
     .min(1)
     .max(500)
     .error(
@@ -88,21 +71,21 @@ const registerVendor = joi.object({
         "Shop address is required and must be between 10-500 characters"
       )
     ),
-
-  consentAgree: joi
-    .boolean()
-    .valid(true)
-    .error(new Error("You must give consent to proceed")),
+  //   vehicleNo: joi.string().min(10).max(10).error(),
+  roleType: joi.string().valid(ROLE.VENDOR).required().messages({
+    "any.only": "Role type must be one of: VENDOR",
+    "any.required": "Role type is required",
+  }),
 });
 
-const createDeliveryPartner = joi
+const createDeliveryPartnerByAdmin = joi
   .object({
     // 🔹 Basic Information
     firstName: joi
       .string()
-      .required()
       .min(2)
       .max(50)
+      .required()
       .error(
         new Error("First name is required and must be between 2–50 characters.")
       ),
@@ -134,7 +117,6 @@ const createDeliveryPartner = joi
       .max(50)
       .error(new Error("Password must be between 6–50 characters.")),
 
-    // 🔹 Personal Details
     dob: joi
       .date()
       .iso()
@@ -145,22 +127,18 @@ const createDeliveryPartner = joi
     gender: joi
       .string()
       .valid("male", "female", "other")
-      .required()
       .error(new Error("Gender must be one of: male, female, or other.")),
 
-    // 🔹 Vehicle Type (Required)
     vehicleType: joi
       .string()
       .valid("cycle", "bike")
-      .required()
       .error(
         new Error("Vehicle type is required and must be either cycle or bike.")
       ),
 
-    // 🔹 Driver & Vehicle Info (Conditional - Required only for bike)
     driverLicenseNo: joi.string().when("vehicleType", {
       is: "bike",
-      then: joi.string().required().min(5).max(30).messages({
+      then: joi.string().min(5).max(30).messages({
         "string.empty": "Driver license number is required for bike.",
         "string.min": "Driver license number must be at least 5 characters.",
         "string.max": "Driver license number must be at most 30 characters.",
@@ -171,7 +149,7 @@ const createDeliveryPartner = joi
 
     vehicleNo: joi.string().when("vehicleType", {
       is: "bike",
-      then: joi.string().required().min(5).max(20).messages({
+      then: joi.string().min(5).max(20).messages({
         "string.empty": "Vehicle number is required for bike.",
         "string.min": "Vehicle number must be at least 5 characters.",
         "string.max": "Vehicle number must be at most 20 characters.",
@@ -180,15 +158,14 @@ const createDeliveryPartner = joi
       otherwise: joi.string().allow("", null).optional(),
     }),
 
-    // 🔹 Consent
-    consentAgree: joi
-      .boolean()
-      .valid(true)
-      .error(new Error("You must give consent to proceed.")),
+    roleType: joi.string().valid(ROLE.DELIVERY_PARTNER).required().messages({
+      "any.only": "Role type must be one of: DELIVERY_PARTNER",
+      "any.required": "Role type is required",
+    }),
   })
   .unknown(false);
 
-const createCustomer = joi
+const createCustomerByAdmin = joi
   .object({
     firstName: joi
       .string()
@@ -198,7 +175,6 @@ const createCustomer = joi
       .error(
         new Error("First name is required and must be between 2–50 characters.")
       ),
-
     lastName: joi
       .string()
       .allow("", null)
@@ -212,52 +188,16 @@ const createCustomer = joi
         "string.empty": "Mobile number is required.",
         "string.pattern.base": "Mobile number must be exactly 10 digits.",
       }),
-  })
-  .unknown(false);
-
-const createAdminsValidation = joi
-  .object({
-    firstName: joi.string().trim().min(2).max(50).required(),
-    lastName: joi.string().trim().allow("", null).max(50),
-    email: joi.string().trim().email().required().messages({
-      "string.email": "Invalid email format",
-      "any.required": "Email is required",
-    }),
-    mobNo: joi
-      .string()
-      .trim()
-      .pattern(/^[0-9]{10}$/)
-      .required()
-      .messages({
-        "string.pattern.base": "Mobile number must be 10 digits",
-        "any.required": "Mobile number is required",
-      }),
-    roleType: joi.string().trim().required().messages({
+    roleType: joi.string().valid(ROLE.CUSTOMER).required().messages({
+      "any.only": "Role type must be one of: CUSTOMER",
       "any.required": "Role type is required",
     }),
   })
-  .unknown(false);
 
-const updateAdminsValidation = joi
-  .object({
-    firstName: joi.string().trim().min(2).max(50),
-    lastName: joi.string().trim().allow("", null).max(50),
-    email: joi.string().trim().email().optional(),
-    mobNo: joi
-      .string()
-      .trim()
-      .pattern(/^[0-9]{10}$/)
-      .message("Mobile number must be 10 digits")
-      .optional(),
-    isActive: joi.boolean().optional(),
-  })
-  .min(1)
   .unknown(false);
 
 module.exports = {
-  registerVendor,
-  createDeliveryPartner,
-  createCustomer,
-  createAdminsValidation,
-  updateAdminsValidation,
+  createVendorByAdmin,
+  createDeliveryPartnerByAdmin,
+  createCustomerByAdmin,
 };
