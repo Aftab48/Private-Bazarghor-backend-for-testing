@@ -73,23 +73,23 @@ const updateVendors = joi.object({
     .allow(null)
     .error(new Error("Date of birth must be a valid date")),
 
-  // cityNm: joi
-  //   .string()
-  //   .optional()
-  //   .allow("", null)
-  //   .max(100)
-  //   .error(new Error("City name must be maximum 100 characters")),
+  cityNm: joi
+    .string()
+    .optional()
+    .allow("", null)
+    .max(100)
+    .error(new Error("City name must be maximum 100 characters")),
 
-  // pincode: joi
-  //   .string()
-  //   .regex(/^[0-9]{6}$/)
-  //   .messages({
-  //     "string.empty": "Pincode is required",
-  //     "string.pattern.base": "Pincode must be exactly 6 digits",
-  //   }),
+  pinCode: joi
+    .string()
+    .regex(/^[0-9]{6}$/)
+    .messages({
+      "string.empty": "Pincode is required",
+      "string.pattern.base": "Pincode must be exactly 6 digits",
+    }),
 
   // // Shop/Business Details
-  // shopname: joi
+  // storeName: joi
   //   .string()
   //   .min(2)
   //   .max(100)
@@ -97,7 +97,7 @@ const updateVendors = joi.object({
   //     new Error("Shop name is required and must be between 2-100 characters")
   //   ),
 
-  // shopaddress: joi
+  // storeAddress: joi
   //   .string()
   //   .min(1)
   //   .max(500)
@@ -131,6 +131,30 @@ const updateDeliveryPartners = joi
       .email({ tlds: { allow: false } })
 
       .error(new Error("Email must be a valid email address.")),
+
+    partnerAddress: joi
+      .string()
+      .min(1)
+      .max(500)
+      .error(
+        new Error(
+          "Partner address is required and must be between 10-500 characters"
+        )
+      ),
+    cityNm: joi
+      .string()
+      .optional()
+      .allow("", null)
+      .max(100)
+      .error(new Error("City name must be maximum 100 characters")),
+
+    pinCode: joi
+      .string()
+      .regex(/^[0-9]{6}$/)
+      .messages({
+        "string.empty": "Pincode is required",
+        "string.pattern.base": "Pincode must be exactly 6 digits",
+      }),
 
     // mobNo: joi
     //   .string()
@@ -269,7 +293,7 @@ const updateVendorsByAdmin = joi.object({
     .max(100)
     .error(new Error("City name must be maximum 100 characters")),
 
-  pincode: joi
+  pinCode: joi
     .string()
     .regex(/^[0-9]{6}$/)
     .messages({
@@ -278,7 +302,7 @@ const updateVendorsByAdmin = joi.object({
     }),
 
   // Shop/Business Details
-  shopname: joi
+  storeName: joi
     .string()
     .min(2)
     .max(100)
@@ -286,7 +310,7 @@ const updateVendorsByAdmin = joi.object({
       new Error("Shop name is required and must be between 2-100 characters")
     ),
 
-  shopaddress: joi
+  storeAddress: joi
     .string()
     .min(1)
     .max(500)
@@ -344,6 +368,29 @@ const updateDeliveryPartnersByAdmin = joi
 
       .error(new Error("Gender must be one of: male, female, or other.")),
 
+    partnerAddress: joi
+      .string()
+      .min(1)
+      .max(500)
+      .error(
+        new Error(
+          "Partner address is required and must be between 10-500 characters"
+        )
+      ),
+    cityNm: joi
+      .string()
+      .optional()
+      .allow("", null)
+      .max(100)
+      .error(new Error("City name must be maximum 100 characters")),
+
+    pinCode: joi
+      .string()
+      .regex(/^[0-9]{6}$/)
+      .messages({
+        "string.empty": "Pincode is required",
+        "string.pattern.base": "Pincode must be exactly 6 digits",
+      }),
     // // 🔹 Vehicle Type (Required)
     vehicleType: joi
       .string()

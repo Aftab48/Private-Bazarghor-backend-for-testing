@@ -72,7 +72,7 @@ router.put(
   "/update-delivery-partner/:id",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
   validate(updateAllUsersValidate.updateDeliveryPartnersByAdmin),
-  uploadVendorFiles,
+  uploadDeliveryPartnerFiles,
   usersControllers.updateDeliveryPartnerByAdminController
 );
 

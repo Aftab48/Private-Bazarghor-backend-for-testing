@@ -23,13 +23,14 @@ const { sendEmail } = require("../services/send.email");
 const createVendor = async (req) => {
   const {
     email,
-    password,
+    // password,
     firstName,
     lastName,
     mobNo,
-    shopname,
-    pincode,
-    shopaddress,
+    storeName,
+    pinCode,
+    storeAddress,
+    cityNm,
   } = req.body;
 
   if (!email) {
@@ -43,24 +44,17 @@ const createVendor = async (req) => {
     return { success: false, error: "Email is already registered" };
   }
 
-  const tempQuery = {
+  const tempUser = await User.findOne({
     mobNo,
     tempRegister: true,
     mobVerifiedAt: { $exists: true },
-  };
-  const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
   if (!tempUser) {
     FileService.deleteUploadedFiles(req.files);
     return { success: false, error: "Please verify your mobile number first" };
-  }
-
-  const existingUser = await User.findOne({
-    email,
-    _id: { $ne: tempUser._id },
-  }).lean();
-  if (existingUser) {
-    FileService.deleteUploadedFiles(req.files);
-    return { success: false, error: "Email already registered" };
   }
 
   const vendorRole = await Role.findOne({ code: ROLE.VENDOR }).lean();
@@ -69,23 +63,30 @@ const createVendor = async (req) => {
     return { success: false, error: "Vendor role not found in system" };
   }
 
-  // Prepare vendor data
+  const storePictures = [];
+  if (req.files?.storePictures?.length) {
+    req.files.storePictures.forEach((f) =>
+      storePictures.push(FileService.generateFileObject(f))
+    );
+  }
+
   const vendorData = {
     email,
     firstName,
     lastName,
     mobNo,
-    passwords: [{ pass: password }],
-    roles: [{ roleId: vendorRole._id, code: vendorRole?.code }],
+    pinCode,
+    // passwords: [{ pass: password }],
+    roles: [{ roleId: vendorRole._id, code: vendorRole.code }],
     isActive: true,
     profileCompleted: 0,
     status: VENDOR_STATUS.PENDING,
     termsAndCondition: false,
-    pincode,
+    cityNm: cityNm,
     storeDetails: {
-      storeName: shopname,
-      storeAddress: shopaddress,
-      storePictures: [],
+      storeName: storeName,
+      storeAddress: storeAddress,
+      storePictures,
     },
   };
 
@@ -93,12 +94,6 @@ const createVendor = async (req) => {
     vendorData.profilePicture = FileService.generateFileObject(
       req.files.profilePicture[0]
     );
-  }
-
-  if (req.files?.storePicture?.[0]) {
-    const sp = FileService.generateFileObject(req.files.storePicture[0]);
-    vendorData.storePictures = sp;
-    vendorData.storeDetails.storePictures = [sp];
   }
 
   try {
@@ -116,18 +111,7 @@ const createVendor = async (req) => {
     return {
       success: true,
       data: {
-        vendor: {
-          _id: vendor._id,
-          firstName: vendor.firstName,
-          lastName: vendor.lastName,
-          email: vendor.email,
-          mobNo: vendor.mobNo,
-          roles: vendor.roles,
-          profileCompleted: vendor.profileCompleted,
-          shopname: vendor.shopname,
-          shopaddress: vendor.shopaddress,
-          pincode: vendor.pincode,
-        },
+        vendor,
         token: tokenData.token,
         refreshToken: tokenData.refreshToken,
         validateTill: tokenData.validateTill,
@@ -143,7 +127,7 @@ const createVendor = async (req) => {
 const createDeliveryPartner = async (req) => {
   const {
     email,
-    password,
+    // password,
     firstName,
     lastName,
     mobNo,
@@ -159,82 +143,23 @@ const createDeliveryPartner = async (req) => {
     return { success: false, error: "Email is required" };
   }
 
-  const user = await User.findOne({ email });
-  if (user) {
+  const existingEmail = await User.findOne({ email });
+  if (existingEmail) {
     FileService.deleteUploadedFiles(req.files);
     return { success: false, error: "Email is already registered" };
   }
 
-  const tempQuery = {
+  const tempUser = await User.findOne({
     mobNo,
     tempRegister: true,
     mobVerifiedAt: { $exists: true },
-  };
-  const tempUser = await User.findOne(tempQuery).sort({ updatedAt: -1 }).lean();
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
   if (!tempUser) {
     FileService.deleteUploadedFiles(req.files);
     return { success: false, error: "Please verify your mobile number first" };
-  }
-
-  const orConditions = [{ email }];
-  // Only check for vehicle/license conflicts if vehicleType is bike
-  if (vehicleType === "bike") {
-    if (vehicleNo) orConditions.push({ vehicleNo });
-    if (driverLicenseNo) orConditions.push({ driverLicenseNo });
-  }
-
-  const existingUser = await User.findOne({
-    $or: orConditions,
-    _id: { $ne: tempUser._id },
-  }).lean();
-
-  if (existingUser) {
-    FileService.deleteUploadedFiles(req.files);
-
-    const conflicts = [];
-    if (existingUser.email === email) {
-      conflicts.push({
-        field: "email",
-        value: existingUser.email,
-        message: "Email already registered",
-      });
-    }
-    if (mobNo && existingUser.mobNo === mobNo) {
-      conflicts.push({
-        field: "mobNo",
-        value: existingUser.mobNo,
-        message: "Mobile number already registered",
-      });
-    }
-    if (
-      vehicleType === "bike" &&
-      vehicleNo &&
-      existingUser.vehicleNo === vehicleNo
-    ) {
-      conflicts.push({
-        field: "vehicleNo",
-        value: existingUser.vehicleNo,
-        message: "Vehicle number already registered",
-      });
-    }
-    if (
-      vehicleType === "bike" &&
-      driverLicenseNo &&
-      existingUser.driverLicenseNo === driverLicenseNo
-    ) {
-      conflicts.push({
-        field: "driverLicenseNo",
-        value: existingUser.driverLicenseNo,
-        message: "Driver license number already registered",
-      });
-    }
-
-    const messageText =
-      conflicts.length === 1
-        ? conflicts[0].message
-        : "One or more fields already registered";
-
-    return { success: false, error: messageText, conflicts };
   }
 
   const deliveryRole = await Role.findOne({
@@ -246,6 +171,45 @@ const createDeliveryPartner = async (req) => {
     return { success: false, error: "Delivery Partner role not found" };
   }
 
+  if (vehicleType === "bike") {
+    if (!vehicleNo) {
+      FileService.deleteUploadedFiles(req.files);
+      return { success: false, error: "Vehicle number is required for bike" };
+    }
+    if (!driverLicenseNo) {
+      FileService.deleteUploadedFiles(req.files);
+      return { success: false, error: "License number is required for bike" };
+    }
+  }
+
+  const vehicleDetails = {
+    vehicleType,
+    vehicleNo: vehicleType === "bike" ? vehicleNo : undefined,
+    driverLicenseNo: vehicleType === "bike" ? driverLicenseNo : undefined,
+    vehiclePictures: {},
+  };
+
+  // ✅ Handle vehicle pictures (front/back)
+  if (req.files?.vehicleFront?.[0]) {
+    vehicleDetails.vehiclePictures.front = FileService.generateFileObject(
+      req.files.vehicleFront[0]
+    );
+  }
+  if (req.files?.vehicleBack?.[0]) {
+    vehicleDetails.vehiclePictures.back = FileService.generateFileObject(
+      req.files.vehicleBack[0]
+    );
+  }
+
+  // ✅ Profile picture
+  let profilePicture;
+  if (req.files?.profilePicture?.[0]) {
+    profilePicture = FileService.generateFileObject(
+      req.files.profilePicture[0]
+    );
+  }
+
+  // ✅ Build user data
   const partnerData = {
     email,
     firstName,
@@ -253,97 +217,50 @@ const createDeliveryPartner = async (req) => {
     mobNo,
     dob,
     gender,
-    vehicleType,
-    passwords: [{ pass: password }],
-    roles: [{ roleId: deliveryRole._id, code: deliveryRole?.code }],
+    // passwords: [{ pass: password }],
+    roles: [{ roleId: deliveryRole._id, code: deliveryRole.code }],
     isActive: true,
     profileCompleted: 0,
     status: DELIVERY_PARTNER_STATUS.PENDING,
     termsAndCondition: false,
+    vehicleDetails,
   };
 
-  // Only add vehicle and license details if vehicleType is bike
-  if (vehicleType === "bike") {
-    partnerData.driverLicenseNo = driverLicenseNo;
-    partnerData.vehicleNo = vehicleNo;
-  }
-
-  if (req.files?.vehiclePictures?.length) {
-    const vps = req.files.vehiclePictures.map((file) =>
-      FileService.generateFileObject(file)
-    );
-    partnerData.vehiclePictures = vps;
-    partnerData.vehicleDetails = {
-      vehicleType,
-      vehiclePictures: vps,
-    };
-
-    // Only add vehicle and license to vehicleDetails if type is bike
-    if (vehicleType === "bike") {
-      partnerData.vehicleDetails.vehicleNo = vehicleNo;
-      partnerData.vehicleDetails.driverLicenseNo = driverLicenseNo;
-    }
-  } else if (vehicleType === "bike") {
-    // Create vehicleDetails even without pictures for bike
-    partnerData.vehicleDetails = {
-      vehicleType,
-      vehicleNo,
-      driverLicenseNo,
-      vehiclePictures: [],
-    };
-  } else {
-    // For cycle, just store the vehicle type
-    partnerData.vehicleDetails = {
-      vehicleType,
-      vehiclePictures: [],
-    };
-  }
-
-  if (req.files?.profilePicture?.[0]) {
-    partnerData.profilePicture = FileService.generateFileObject(
-      req.files.profilePicture[0]
-    );
-  }
+  if (profilePicture) partnerData.profilePicture = profilePicture;
 
   try {
     const partner = await User.findByIdAndUpdate(
       tempUser._id,
       { $set: partnerData, $unset: { tempRegister: 1 } },
       { new: true }
-    );
+    ).lean();
 
     const tokenData = await generateToken(
       partner,
       req.headers["user-agent"] || "Unknown Device"
     );
 
-    const responseData = {
-      partner: {
-        _id: partner._id,
-        firstName: partner.firstName,
-        lastName: partner.lastName,
-        email: partner.email,
-        mobNo: partner.mobNo,
-        roles: partner.roles,
-        profileCompleted: partner.profileCompleted,
-        vehicleType: partner.vehicleType,
-        dob: formatDate(partner.dob),
-        gender: partner.gender,
-      },
-      token: tokenData.token,
-      refreshToken: tokenData.refreshToken,
-      validateTill: tokenData.validateTill,
-    };
-
-    // Only include vehicle details in response if vehicleType is bike
-    if (partner.vehicleType === "bike") {
-      responseData.partner.vehicleNo = partner.vehicleNo;
-      responseData.partner.driverLicenseNo = partner.driverLicenseNo;
-    }
-
     return {
       success: true,
-      data: responseData,
+      data: {
+        partner: {
+          _id: partner._id,
+          firstName: partner.firstName,
+          lastName: partner.lastName,
+          email: partner.email,
+          mobNo: partner.mobNo,
+          gender: partner.gender,
+          dob: formatDate(partner.dob),
+          vehicleType: partner.vehicleDetails?.vehicleType,
+          vehicleNo: partner.vehicleDetails?.vehicleNo,
+          driverLicenseNo: partner.vehicleDetails?.driverLicenseNo,
+          vehiclePictures: partner.vehicleDetails?.vehiclePictures,
+          profilePicture: partner.profilePicture,
+        },
+        token: tokenData.token,
+        refreshToken: tokenData.refreshToken,
+        validateTill: tokenData.validateTill,
+      },
     };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
@@ -387,8 +304,8 @@ const updateVendor = async (userId, body, files) => {
   if (!user) return { success: false, notFound: true };
 
   const allowedFields = ["firstName", "lastName", "email", "dob", "gender"];
-
   const update = {};
+
   for (const key of allowedFields) {
     if (
       Object.prototype.hasOwnProperty.call(body, key) &&
@@ -398,52 +315,59 @@ const updateVendor = async (userId, body, files) => {
     }
   }
 
+  const storeAllowed = ["storeName", "storeAddress"];
+  for (const key of storeAllowed) {
+    if (
+      Object.prototype.hasOwnProperty.call(body, key) &&
+      body[key] !== undefined
+    ) {
+      update.storeDetails = update.storeDetails || user.storeDetails || {};
+      update.storeDetails[key] = body[key];
+    }
+  }
+
+  // ✅ file uploads
   if (files?.profilePicture?.[0]) {
     update.profilePicture = FileService.generateFileObject(
       files.profilePicture[0]
     );
   }
-  if (files?.storePictures?.[0]) {
-    const sp = FileService.generateFileObject(files.storePictures[0]);
-    update.storePictures = sp;
-    update.storeDetails = update.storeDetails || {};
-    update.storeDetails.storePictures = [sp];
+
+  if (files?.storePictures?.length) {
+    const storePics = files.storePictures.map((f) =>
+      FileService.generateFileObject(f)
+    );
+    update.storeDetails = update.storeDetails || user.storeDetails || {};
+    update.storeDetails.storePictures = storePics;
   }
 
   if (Object.keys(update).length === 0) {
-    return {
-      success: false,
-      notFound: true,
-      error: "No fields provided to update",
-    };
-  }
-
-  const updated = await User.findByIdAndUpdate(
-    userId,
-    { $set: update },
-    { new: true }
-  ).lean();
-
-  const resp = { _id: updated._id };
-  for (const k of Object.keys(update)) {
-    if (k === "profilePicture") {
-      resp.profilePicture = updated.profilePicture;
-    } else if (k === "storePicture") {
-      resp.storePicture = updated.storePicture;
-    } else if (k === "storeDetails") {
-      if (update.storeDetails.storePictures)
-        resp.storeDetails = {
-          storePictures: updated.storeDetails?.storePictures || [],
-        };
-    } else {
-      resp[k] = updated[k];
-    }
+    return { success: false, error: "No fields provided to update" };
   }
 
   try {
-    await User.findByIdAndUpdate(userId, update, {
-      new: true,
-    }).lean();
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $set: update },
+      { new: true }
+    ).lean();
+
+    const resp = { _id: updated._id };
+
+    // ✅ dynamic loop-based response
+    for (const k of Object.keys(update)) {
+      if (k === "storeDetails") {
+        resp.storeDetails = {};
+        for (const sd of Object.keys(update.storeDetails)) {
+          resp.storeDetails[sd] = updated.storeDetails?.[sd];
+        }
+      } else if (k === "profilePicture") {
+        resp.profilePicture = updated.profilePicture;
+      } else {
+        resp[k] = updated[k];
+      }
+    }
+
     return { success: true, data: resp };
   } catch (err) {
     logger.error("Vendor update error:", err);
@@ -463,12 +387,13 @@ const updateDeliveryPartner = async (userId, body, files) => {
     "email",
     "dob",
     "gender",
-    // "vehicleType",
-    // "driverLicenseNo",
-    // "vehicleNo",
+    "partnerAddress",
+    "cityNm",
+    "pinCode",
   ];
 
   const update = {};
+
   for (const key of allowedFields) {
     if (
       Object.prototype.hasOwnProperty.call(body, key) &&
@@ -478,116 +403,90 @@ const updateDeliveryPartner = async (userId, body, files) => {
     }
   }
 
-  // Determine the vehicle type (use updated value or existing)
-  const vehicleType = update.vehicleType || user.vehicleType;
-
-  // If changing to cycle from bike, clear vehicle and license fields
-  if (update.vehicleType === "cycle" && user.vehicleType === "bike") {
-    update.vehicleNo = null;
-    update.driverLicenseNo = null;
-  }
-
-  // Validate that bike users provide vehicle and license details
-  if (vehicleType === "bike") {
-    const finalVehicleNo = update.vehicleNo || user.vehicleNo;
-    const finalLicenseNo = update.driverLicenseNo || user.driverLicenseNo;
-
-    if (!finalVehicleNo) {
-      return {
-        success: false,
-        error: "Vehicle number is required for bike type",
-      };
-    }
-    if (!finalLicenseNo) {
-      return {
-        success: false,
-        error: "Driver license number is required for bike type",
-      };
+  const vehicleFields = ["vehicleType", "vehicleNo", "driverLicenseNo"];
+  for (const key of vehicleFields) {
+    if (
+      Object.prototype.hasOwnProperty.call(body, key) &&
+      body[key] !== undefined
+    ) {
+      update.vehicleDetails =
+        update.vehicleDetails || user.vehicleDetails || {};
+      update.vehicleDetails[key] = body[key];
     }
   }
 
-  // files handling - allow multiple vehicle pictures
-  if (files?.vehiclePictures?.length) {
-    const vps = files.vehiclePictures.map((f) =>
-      FileService.generateFileObject(f)
-    );
-    update.vehiclePictures = vps;
-    update.vehicleDetails = update.vehicleDetails || user.vehicleDetails || {};
-    update.vehicleDetails.vehiclePictures = vps;
+  const vType =
+    update.vehicleDetails?.vehicleType || user.vehicleDetails?.vehicleType;
+  if (vType === "bike") {
+    const vNo =
+      update.vehicleDetails?.vehicleNo || user.vehicleDetails?.vehicleNo;
+    const lNo =
+      update.vehicleDetails?.driverLicenseNo ||
+      user.vehicleDetails?.driverLicenseNo;
+
+    if (!vNo)
+      return { success: false, error: "Vehicle number required for bike" };
+    if (!lNo)
+      return { success: false, error: "License number required for bike" };
   }
+
+  // ✅ files
   if (files?.profilePicture?.[0]) {
     update.profilePicture = FileService.generateFileObject(
       files.profilePicture[0]
     );
   }
+  update.vehicleDetails = user.vehicleDetails || {};
 
-  // if nothing to update
-  if (Object.keys(update).length === 0) {
-    return {
-      success: false,
-      notFound: true,
-      error: "No fields provided to update",
+  if (files?.vehicleFront?.[0]) {
+    update.vehicleDetails.vehiclePictures = {
+      ...user.vehicleDetails.vehiclePictures,
+      front: FileService.generateFileObject(files.vehicleFront[0]),
     };
   }
 
-  // Update vehicleDetails to match vehicleType
-  if (update.vehicleType || update.vehicleNo || update.driverLicenseNo) {
-    update.vehicleDetails = update.vehicleDetails || user.vehicleDetails || {};
-    update.vehicleDetails.vehicleType = vehicleType;
-
-    if (vehicleType === "bike") {
-      update.vehicleDetails.vehicleNo = update.vehicleNo || user.vehicleNo;
-      update.vehicleDetails.driverLicenseNo =
-        update.driverLicenseNo || user.driverLicenseNo;
-    } else {
-      // For cycle, remove vehicle and license from vehicleDetails
-      delete update.vehicleDetails.vehicleNo;
-      delete update.vehicleDetails.driverLicenseNo;
-    }
+  if (files?.vehicleBack?.[0]) {
+    update.vehicleDetails.vehiclePictures = {
+      ...user.vehicleDetails.vehiclePictures,
+      back: FileService.generateFileObject(files.vehicleBack[0]),
+    };
   }
-
-  // sync flat vehicle and driver fields from vehicleDetails if provided
-  if (update.vehicleDetails) {
-    if (update.vehicleDetails.vehicleType)
-      update.vehicleType = update.vehicleDetails.vehicleType;
-    if (update.vehicleDetails.vehicleNo)
-      update.vehicleNo = update.vehicleDetails.vehicleNo;
-    if (update.vehicleDetails.driverLicenseNo)
-      update.driverLicenseNo = update.vehicleDetails.driverLicenseNo;
-  }
-
-  const updated = await User.findByIdAndUpdate(
-    userId,
-    { $set: update },
-    { new: true }
-  ).lean();
-
-  const resp = { _id: updated._id };
-  for (const k of Object.keys(update)) {
-    if (k === "profilePicture") {
-      resp.profilePicture = updated.profilePicture;
-    } else if (k === "vehiclePictures" || k === "vehicleDetails") {
-      resp.vehiclePictures = updated.vehiclePictures;
-      if (Object.prototype.hasOwnProperty.call(update, "vehicleType")) {
-        resp.vehicleType = updated.vehicleType;
-      }
-      if (Object.prototype.hasOwnProperty.call(update, "vehicleNo")) {
-        resp.vehicleNo = updated.vehicleNo;
-      }
-      if (Object.prototype.hasOwnProperty.call(update, "driverLicenseNo")) {
-        resp.driverLicenseNo = updated.driverLicenseNo;
-      }
-    } else if (k === "dob") {
-      resp.dob = formatDate(updated.dob);
-    } else {
-      resp[k] = updated[k];
-    }
+  if (Object.keys(update).length === 0) {
+    return { success: false, error: "No fields provided to update" };
   }
 
   try {
-    await User.findByIdAndUpdate(userId, update, {
-      new: true,
-    }).lean();
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $set: update },
+      { new: true }
+    ).lean();
+
+    const resp = { _id: updated._id };
+    for (const k of Object.keys(update)) {
+      if (k === "profilePicture") {
+        resp.profilePicture = updated.profilePicture;
+      } else if (k === "vehicleDetails.vehiclePictures") {
+        resp.vehicleDetails = resp.vehicleDetails || {};
+        resp.vehicleDetails.vehiclePictures = {
+          front: updated?.vehicleDetails?.vehiclePictures?.vehicleFront,
+          back: updated?.vehicleDetails?.vehiclePictures?.vehicleBack,
+        };
+        if (Object.prototype.hasOwnProperty.call(update, "vehicleType")) {
+          resp.vehicleType = updated.vehicleType;
+        }
+        if (Object.prototype.hasOwnProperty.call(update, "vehicleNo")) {
+          resp.vehicleNo = updated.vehicleNo;
+        }
+        if (Object.prototype.hasOwnProperty.call(update, "driverLicenseNo")) {
+          resp.driverLicenseNo = updated.driverLicenseNo;
+        }
+      } else if (k === "dob") {
+        resp.dob = formatDate(updated.dob);
+      } else {
+        resp[k] = updated[k];
+      }
+    }
     return { success: true, data: resp };
   } catch (err) {
     logger.error("Delivery Partner update error:", err);

@@ -36,22 +36,22 @@ router.put(
 
 router.post(
   "/login/send-otp",
+  validate(validateDeliveryPartner.loginUser),
   upload.none(),
-  validate(validate.loginUser),
   otp.sendOTP
 );
 
 router.post(
   "/login/verify",
-  upload.none(),
   validate(validateDeliveryPartner.loginUser),
+  upload.none(),
   otp.verifyOTPAndLogin
 );
 
 router.post(
   "/login/resend",
-  upload.none(),
   validate(validateDeliveryPartner.loginUser),
+  upload.none(),
   otp.resendOTP
 );
 router.post("/logout", authMiddleware([]), logoutUser);

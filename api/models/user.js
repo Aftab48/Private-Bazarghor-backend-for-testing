@@ -80,15 +80,7 @@ const schema = new Schema(
     utcOffset: { type: String }, //user timezone offset
     dob: { type: Date },
     cityNm: { type: String }, //user city Name
-    shopaddress: { type: String }, //user shop address
-    shopname: { type: String }, //user shop name
-    pincode: { type: String }, //user pincode
-    vehicleNo: { type: String }, //user vehicle No
-    driverLicenseNo: { type: String }, //user driver license No
-    vehicleType: {
-      type: String,
-      enum: ["cycle", "bike"],
-    }, //vehicle type for delivery partner
+    pinCode: { type: String }, //user pincode
     profileCompleted: { type: Number, min: 0, max: 100, default: 0 }, // how much user's profile is completed.
     tokens: [
       {
@@ -129,19 +121,19 @@ const schema = new Schema(
       type: Schema.Types.ObjectId,
       // ref: "file"
     },
-
+    partnerAddress: { type: String },
     status: { type: Number },
     profilePicture: fileSchema,
-
     vehicleDetails: {
-      vehicleType: {
-        type: String,
-        enum: ["cycle", "bike"],
-      },
+      vehicleType: { type: String, enum: ["cycle", "bike"] },
       vehicleNo: { type: String },
       driverLicenseNo: { type: String },
-      vehiclePictures: { type: [fileSchema], default: [] },
+      vehiclePictures: {
+        front: fileSchema,
+        back: fileSchema,
+      },
     },
+
     storeDetails: {
       storeName: { type: String },
       storeAddress: { type: String },
@@ -153,7 +145,7 @@ const schema = new Schema(
         addressLine2: { type: String },
         city: { type: String },
         state: { type: String },
-        pincode: { type: String },
+        pinCode: { type: String },
         landmark: { type: String },
         addressType: {
           type: String,

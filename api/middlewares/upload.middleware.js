@@ -30,7 +30,8 @@ const uploadVendorFiles = upload.fields([
 
 // ✅ Middleware to handle delivery partner files (vehicle pictures only)
 const uploadDeliveryPartnerFiles = upload.fields([
-  { name: "vehiclePictures", maxCount: 2 },
+  { name: "vehicleFront", maxCount: 1 },
+  { name: "vehicleBack", maxCount: 1 },
   { name: "profilePicture", maxCount: 1 },
 ]);
 const uploadCustomerFiles = upload.fields([
