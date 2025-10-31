@@ -236,6 +236,23 @@ const deleteCustomerByAdminController = catchAsync(async (req, res) => {
   );
 });
 
+const verifyPendingStatus = catchAsync(async (req, res) => {
+  const adminId = req.user;
+  const { userId } = req.params;
+  const { roleType } = req.body;
+  const result = await userStaff.verifyPendingStatus(adminId, userId, roleType);
+  if (!result.success)
+    return messages.failureResponse(
+      result?.error || "Failed to Update Status",
+      res
+    );
+  return messages.successResponse(
+    result?.data,
+    res,
+    `${roleType} account approved successfully`
+  );
+});
+
 module.exports = {
   createVendorByAdminController,
   getAllVendorsController,
@@ -252,4 +269,5 @@ module.exports = {
   getCustomerByIdController,
   updateCustomerByAdminController,
   deleteCustomerByAdminController,
+  verifyPendingStatus,
 };

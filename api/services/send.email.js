@@ -1,5 +1,6 @@
 // /api/services/email.service.js
 const nodemailer = require("nodemailer");
+const mjml = require("mjml");
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -31,4 +32,13 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-module.exports = { sendEmail };
+const renderTemplate = (template, data = {}) => {
+  let html = template;
+  for (const key in data) {
+    const value = data[key] ?? "";
+    html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
+  }
+  return mjml(html, { minify: true }).html;
+};
+
+module.exports = { sendEmail, renderTemplate };

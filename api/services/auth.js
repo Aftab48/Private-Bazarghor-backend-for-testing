@@ -18,7 +18,8 @@ const {
 const { formatDate } = require("../helpers/utils/date");
 const { generateOTP } = require("../helpers/utils/comman");
 const moment = require("moment-timezone");
-const { sendEmail } = require("../services/send.email");
+const { sendEmail, renderTemplate } = require("../services/send.email");
+const templates = require("../templates/emailTemplates.mjml");
 
 const createVendor = async (req) => {
   const {
@@ -990,15 +991,10 @@ const forgotPassword = async (email) => {
       resetPassword: { code: OTP, expireTime },
     });
 
-    const html = `
-      <div style="font-family:sans-serif;line-height:1.6">
-        <h3>Hello ${user.firstName || user.name || "User"},</h3>
-        <p>Your password reset OTP is:</p>
-        <h2>${OTP}</h2>
-        <p>This OTP will expire in 1 hour.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-      </div>
-    `;
+    const html = renderTemplate(templates.passwordReset, {
+      firstName: user.firstName || user.name || "User",
+      OTP,
+    });
 
     await sendEmail(user.email, "Password Reset Request", html);
 

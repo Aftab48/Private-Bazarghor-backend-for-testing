@@ -6,8 +6,9 @@ const {
   CUSTOMER_STATUS,
   ROLE,
 } = require("../../config/constants/authConstant");
-const { sendEmail } = require("../services/send.email");
+const { sendEmail, renderTemplate } = require("../services/send.email");
 const FileService = require("../services/file.service");
+const templates = require("../templates/emailTemplates.mjml");
 
 //Vendors Services
 const createVendorByAdmin = async (req, createdBy) => {
@@ -17,9 +18,9 @@ const createVendorByAdmin = async (req, createdBy) => {
       firstName,
       lastName,
       mobNo,
-      shopname,
-      pincode,
-      shopaddress,
+      storeName,
+      pinCode,
+      storeAddress,
       roleType, // e.g. "VENDOR"
     } = req.body;
 
@@ -34,21 +35,28 @@ const createVendorByAdmin = async (req, createdBy) => {
     if (!vendorRole?._id)
       return { success: false, error: `${roleType} role not found` };
 
+    const storePictures = [];
+    if (req.files?.storePictures?.length) {
+      req.files.storePictures.forEach((f) =>
+        storePictures.push(FileService.generateFileObject(f))
+      );
+    }
+
     const vendorData = {
       email,
       firstName,
       lastName,
       mobNo,
-      pincode,
+      pinCode,
       roles: [{ roleId: vendorRole._id, code: vendorRole.code }],
       isActive: true,
       profileCompleted: 0,
       status: VENDOR_STATUS.APPROVED,
       termsAndCondition: false,
       storeDetails: {
-        storeName: shopname,
-        storeAddress: shopaddress,
-        storePictures: [],
+        storeName: storeName,
+        storeAddress: storeAddress,
+        storePictures,
       },
       createdBy, // 🟢 Store the ID of the creator
     };
@@ -59,30 +67,18 @@ const createVendorByAdmin = async (req, createdBy) => {
       );
     }
 
-    if (req.files?.storePicture?.[0]) {
-      const sp = FileService.generateFileObject(req.files.storePicture[0]);
-      vendorData.storeDetails.storePictures = [sp];
-    }
-
     const vendor = await User.create(vendorData);
 
-    const html = `
-  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-    <h2 style="color: #2c3e50;">Your account has been created 🎉</h2>
-    <h3>Hello ${vendor.firstName || "Vendor"},</h3>
-    <p>You can now login using your mobile number:</p>
-    <p><strong>Mobile No:</strong> ${mobNo}</p>
-    <p style="margin-top: 20px; font-size: 14px; color: #666;">
-        <p style="margin-top: 20px; font-size: 14px; color: #666;">
-          You can now log in using your registered mobile number.<br/>
-          Thank you for joining us!<br/>
-      Thank you for joining us!  
-      <br/>${process.env.APP_NAME || "Team"}
-    </p>
-  </div>
-`;
+    if (email) {
+      const html = renderTemplate(templates.vendorCreated, {
+        firstName: firstName || "Vendor",
+        mobNo,
+        // appName: process.env.APP_NAME || "Grocery App",
+      });
 
-    await sendEmail(email, "Your Vendor Account Details", html);
+      await sendEmail(email, "Your Vendor Account Details", html);
+    }
+
     return { success: true, data: vendor };
   } catch (err) {
     logger.error("Admin Vendor creation error:", err);
@@ -122,15 +118,16 @@ const getVendorById = async (id) => {
 
 const updateVendorByAdmin = async (id, body, files) => {
   try {
-    if (!id) return { success: false, notFound: true };
+    if (!id)
+      return { success: false, notFound: true, error: "Vendor ID missing" };
 
     const vendor = await User.findOne({
       _id: id,
       "roles.code": ROLE.VENDOR,
     }).lean();
+
     if (!vendor) return { success: false, error: "Vendor not found" };
 
-    // Admin can update full vendor details, so allow all possible vendor fields.
     const allowedFields = [
       "firstName",
       "lastName",
@@ -139,15 +136,15 @@ const updateVendorByAdmin = async (id, body, files) => {
       "dob",
       "gender",
       "cityNm",
-      "pincode",
-      "shopname",
-      "shopaddress",
+      "pinCode",
       "isActive",
       "status",
-      "storeDetails", // if nested
+      "storeName",
+      "storeAddress",
     ];
 
     const update = {};
+
     for (const key of allowedFields) {
       if (
         Object.prototype.hasOwnProperty.call(body, key) &&
@@ -157,52 +154,64 @@ const updateVendorByAdmin = async (id, body, files) => {
       }
     }
 
-    // Handle file uploads
     if (files?.profilePicture?.[0]) {
       update.profilePicture = FileService.generateFileObject(
         files.profilePicture[0]
       );
     }
 
-    if (files?.storePictures?.[0]) {
-      const sp = FileService.generateFileObject(files.storePictures[0]);
+    if (files?.storePictures?.length) {
+      const pictures = files.storePictures.map((f) =>
+        FileService.generateFileObject(f)
+      );
       update.storeDetails = update.storeDetails || {};
-      update.storeDetails.storePictures = [sp];
+      update.storeDetails.storePictures = pictures;
     }
 
-    // Safety check
     if (Object.keys(update).length === 0) {
-      return { success: false, error: "No fields provided to update" };
+      return { success: false, error: "No valid fields provided for update" };
     }
+    const updateQuery = {};
+    if (update.storeName) {
+      updateQuery["storeDetails.storeName"] = update.storeName;
+      delete update.storeName;
+    }
+
+    if (update.storeAddress) {
+      updateQuery["storeDetails.storeAddress"] = update.storeAddress;
+      delete update.storeAddress;
+    }
+    if (update.storeDetails) {
+      for (const [key, value] of Object.entries(update.storeDetails)) {
+        updateQuery[`storeDetails.${key}`] = value;
+      }
+      delete update.storeDetails;
+    }
+
+    Object.assign(updateQuery, update);
 
     const updatedVendor = await User.findByIdAndUpdate(
       id,
-      { $set: update },
+      { $set: updateQuery },
       { new: true }
     ).lean();
 
     if (!updatedVendor) {
       return { success: false, error: "Vendor not found or update failed" };
     }
+
     const resp = { _id: updatedVendor._id };
-    for (const k of Object.keys(update)) {
-      if (k === "profilePicture") {
-        resp.profilePicture = updatedVendor.profilePicture;
-      } else if (k === "storePicture") {
-        resp.storePicture = updatedVendor.storePicture;
-      } else if (k === "storeDetails") {
-        if (update.storeDetails.storeName)
-          resp.shopname = updatedVendor.shopname;
-        if (update.storeDetails.storeAddress)
-          resp.shopaddress = updatedVendor.shopaddress;
-        if (update.storeDetails.storePictures)
-          resp.storeDetails = {
-            storePictures: updatedVendor.storeDetails?.storePictures || [],
-          };
+
+    for (const key of Object.keys(updateQuery)) {
+      if (key.startsWith("storeDetails.")) {
+        const field = key.split(".")[1];
+        resp.storeDetails = resp.storeDetails || {};
+        resp.storeDetails[field] = updatedVendor.storeDetails?.[field] ?? null;
       } else {
-        resp[k] = updatedVendor[k];
+        resp[key] = updatedVendor[key];
       }
     }
+
     return { success: true, data: resp };
   } catch (err) {
     logger.error("Update vendor by admin error:", err);
@@ -286,24 +295,16 @@ const createDeliveryPartnerByAdmin = async (req, createdBy) => {
 
     const deliveryPartner = await User.create(deliveryData);
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2 style="color: #2c3e50;">Welcome to ${
-          process.env.APP_NAME || "Our Platform"
-        } 🚀</h2>
-        <h3>Hello ${deliveryPartner.firstName || "Delivery Partner"},</h3>
-        <p>Your delivery partner account has been created successfully.</p>
-        <p><strong>Mobile No:</strong> ${mobNo}</p>
-        <p><strong>Date of Birth:</strong> ${dob}</p>
-        <p style="margin-top: 20px; font-size: 14px; color: #666;">
-          You can now log in using your registered mobile number.<br/>
-          Thank you for joining us!<br/>
-          — ${process.env.APP_NAME || "Team"}
-        </p>
-      </div>
-    `;
+    if (email) {
+      const html = renderTemplate(templates.deliveryPartnerCreated, {
+        firstName: deliveryPartner.firstName || "Delivery Partner",
+        mobNo,
+        dob,
+        appName: process.env.APP_NAME || "Grocery App",
+      });
 
-    await sendEmail(email, "Your Delivery Partner Account Created", html);
+      await sendEmail(email, "Your Delivery Partner Account Created", html);
+    }
 
     return { success: true, data: deliveryPartner };
   } catch (err) {
@@ -358,7 +359,6 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
     if (!partner)
       return { success: false, error: "Delivery Partner not found" };
 
-    // Admin can update all these fields
     const allowedFields = [
       "firstName",
       "lastName",
@@ -426,7 +426,6 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
       update.vehicleDetails.vehiclePictures = vps;
     }
 
-    // Vehicle details mapping
     if (update.vehicleType || update.vehicleNo || update.driverLicenseNo) {
       update.vehicleDetails =
         update.vehicleDetails || partner.vehicleDetails || {};
@@ -442,7 +441,6 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
       }
     }
 
-    // Sync flat fields from vehicleDetails (for data consistency)
     if (update.vehicleDetails) {
       if (update.vehicleDetails.vehicleType)
         update.vehicleType = update.vehicleDetails.vehicleType;
@@ -452,12 +450,10 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
         update.driverLicenseNo = update.vehicleDetails.driverLicenseNo;
     }
 
-    // Nothing to update
     if (Object.keys(update).length === 0) {
       return { success: false, error: "No fields provided to update" };
     }
 
-    // Perform the update
     const updated = await User.findByIdAndUpdate(
       id,
       { $set: update },
@@ -471,7 +467,6 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
       };
     }
 
-    // Prepare the response (only updated fields)
     const resp = { _id: updated._id };
     for (const key of Object.keys(update)) {
       if (key === "profilePicture") {
@@ -479,13 +474,13 @@ const updateDeliveryPartnerByAdmin = async (id, body, files) => {
       } else if (key === "vehiclePictures" || key === "vehicleDetails") {
         resp.vehiclePictures = updated.vehiclePictures;
         if (Object.prototype.hasOwnProperty.call(update, "vehicleType")) {
-          resp.vehicleType = updated.vehicleType;
+          resp.vehicleType = updated.vehicleDetails.vehicleType;
         }
         if (Object.prototype.hasOwnProperty.call(update, "vehicleNo")) {
-          resp.vehicleNo = updated.vehicleNo;
+          resp.vehicleNo = updated.vehicleDetails.vehicleNo;
         }
         if (Object.prototype.hasOwnProperty.call(update, "driverLicenseNo")) {
-          resp.driverLicenseNo = updated.driverLicenseNo;
+          resp.driverLicenseNo = updated.vehicleDetails.driverLicenseNo;
         }
       } else {
         resp[key] = updated[key];
@@ -559,21 +554,12 @@ const createCustomerByAdmin = async (req, createdBy) => {
     const customer = await User.create(customerData);
 
     if (email) {
-      const html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <h2 style="color: #2c3e50;">Welcome to ${
-            process.env.APP_NAME || "Our Platform"
-          } 🎉</h2>
-          <p>Hello ${firstName},</p>
-          <p>Your customer account has been created by our team.</p>
-          <p><strong>Mobile No:</strong> ${mobNo}</p>
-          <p style="margin-top: 20px; font-size: 14px; color: #666;">
-            You can log in anytime using your registered mobile number.
-            <br/>
-            — ${process.env.APP_NAME || "Team"}
-          </p>
-        </div>
-      `;
+      const html = renderTemplate(templates.customerCreated, {
+        firstName,
+        mobNo,
+        appName: process.env.APP_NAME || "Grocery App",
+      });
+
       await sendEmail(email, "Your Customer Account Created", html);
     }
 
@@ -645,14 +631,12 @@ const updateCustomerByAdmin = async (id, body, files) => {
       }
     }
 
-    // Handle profile picture upload
     if (files?.profilePicture?.[0]) {
       update.profilePicture = FileService.generateFileObject(
         files.profilePicture[0]
       );
     }
 
-    // If nothing to update
     if (Object.keys(update).length === 0) {
       return {
         success: false,
@@ -660,7 +644,6 @@ const updateCustomerByAdmin = async (id, body, files) => {
       };
     }
 
-    // Profile completion calculation
     let profileCompleted = 20;
     if (update.email || customer.email) profileCompleted += 20;
     if (update.dob || customer.dob) profileCompleted += 20;
@@ -668,7 +651,6 @@ const updateCustomerByAdmin = async (id, body, files) => {
     profileCompleted += 20;
     update.profileCompleted = Math.min(profileCompleted, 100);
 
-    // Perform the update
     const updated = await User.findByIdAndUpdate(
       id,
       { $set: update },
@@ -678,7 +660,6 @@ const updateCustomerByAdmin = async (id, body, files) => {
     if (!updated)
       return { success: false, error: "Customer not found or update failed" };
 
-    // Prepare minimal clean response
     const resp = { _id: updated._id };
     for (const k of Object.keys(update)) {
       if (k === "profilePicture") {
@@ -722,6 +703,85 @@ const deleteCustomerByAdmin = async (id) => {
   }
 };
 
+const verifyPendingStatus = async (adminId, userId, roleType) => {
+  if (!adminId || !userId || !roleType) {
+    return { success: false, error: "Missing adminId, userId, or roleType" };
+  }
+
+  const checkUsers = await User.findOne({
+    _id: userId,
+    "roles.code": roleType,
+  }).lean();
+
+  if (!checkUsers) return { success: false, error: "Vendor not found" };
+
+  const admin = await User.findById(adminId).lean();
+  const allowedAdminRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN];
+  const isAdmin = admin?.roles?.some((r) => allowedAdminRoles.includes(r.code));
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized access" };
+  }
+
+  const user = await User.findById(userId).lean();
+  if (!user) {
+    return { success: false, error: "User not found" };
+  }
+
+  const userRoleCodes = user.roles.map((r) => r.code);
+  if (!userRoleCodes.includes(roleType)) {
+    return { success: false, error: `User does not have role: ${roleType}` };
+  }
+
+  let update = {};
+
+  if (roleType === ROLE.VENDOR) {
+    if (user.status === VENDOR_STATUS.APPROVED) {
+      return { success: false, error: "Vendor already approved" };
+    }
+    update.status = VENDOR_STATUS.APPROVED;
+  }
+
+  if (roleType === ROLE.DELIVERY_PARTNER) {
+    if (user.status === DELIVERY_PARTNER_STATUS.APPROVED) {
+      return { success: false, error: "Delivery Partner already approved" };
+    }
+    update.status = DELIVERY_PARTNER_STATUS.APPROVED;
+  }
+
+  update.verifiedBy = adminId;
+  update.verifiedAt = new Date();
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: update },
+    { new: true }
+  ).lean();
+
+  try {
+    // ✅ Prepare and compile MJML email template
+    const template = templates.accountVerified
+      .replace(/{{firstName}}/g, updatedUser.firstName)
+      .replace(/{{mobNo}}/g, updatedUser.mobNo)
+      .replace(/{{roleType}}/g, roleType.toLowerCase())
+      .replace(/{{appName}}/g, process.env.APP_NAME);
+
+    const { html } = mjml(template, { minify: true });
+
+    // ✅ Send email
+    await sendEmail(
+      updatedUser.email,
+      "Your Account Has Been Verified Successfully",
+      html
+    );
+
+    logger.info(`✅ Verification email sent to ${updatedUser.email}`);
+  } catch (err) {
+    logger.error("❌ Email send error:", err.message);
+  }
+
+  return { success: true, data: updatedUser.status };
+};
+
 module.exports = {
   createVendorByAdmin,
   createDeliveryPartnerByAdmin,
@@ -738,4 +798,5 @@ module.exports = {
   getCustomerById,
   updateCustomerByAdmin,
   deleteCustomerByAdmin,
+  verifyPendingStatus,
 };

@@ -45,7 +45,7 @@ const createVendorByAdmin = joi.object({
     .max(100)
     .error(new Error("City name must be maximum 100 characters")),
 
-  pincode: joi
+  pinCode: joi
     .string()
     .regex(/^[0-9]{6}$/)
     .messages({
@@ -54,7 +54,7 @@ const createVendorByAdmin = joi.object({
     }),
 
   // Shop/Business Details
-  shopname: joi
+  storeName: joi
     .string()
     .min(2)
     .max(100)
@@ -62,7 +62,7 @@ const createVendorByAdmin = joi.object({
       new Error("Shop name is required and must be between 2-100 characters")
     ),
 
-  shopaddress: joi
+  storeAddress: joi
     .string()
     .min(1)
     .max(500)

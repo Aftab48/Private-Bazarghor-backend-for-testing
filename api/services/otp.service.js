@@ -4,7 +4,12 @@ const messages = require("../helpers/utils/messages");
 const logger = require("../helpers/utils/logger");
 const { generateToken } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
-const { OTP_EXPIRY_TIME } = require("../../config/constants/authConstant");
+const {
+  OTP_EXPIRY_TIME,
+  VENDOR_STATUS,
+  ROLE,
+  DELIVERY_PARTNER_STATUS,
+} = require("../../config/constants/authConstant");
 
 const HARDCODED_OTP = "123456";
 
@@ -16,6 +21,14 @@ const sendOTP = catchAsync(async (req, res) => {
   }
 
   let user = await User.findOne({ mobNo }).lean();
+
+  // 🔹 Check active status (for all users)
+  if (user.isActive === false) {
+    return messages.forbidden(
+      "Your account is deactivated. Please contact support.",
+      res
+    );
+  }
 
   const expireDate = new Date();
   expireDate.setMinutes(expireDate.getMinutes() + OTP_EXPIRY_TIME.MINUTE);
@@ -98,6 +111,7 @@ const verifyOTPForRegistration = catchAsync(async (req, res) => {
 
 const verifyOTPAndLogin = catchAsync(async (req, res) => {
   const { mobNo, otp, deviceDetail } = req.body;
+
   if (!mobNo || !otp) {
     return messages.insufficientParameters(
       res,
@@ -115,6 +129,43 @@ const verifyOTPAndLogin = catchAsync(async (req, res) => {
   ) {
     return messages.badRequest({}, res, "Invalid or expired OTP");
   }
+  const roleCodes = user.roles?.map((r) => r.code) || [];
+
+  if (
+    roleCodes.includes(ROLE.VENDOR) ||
+    roleCodes.includes(ROLE.DELIVERY_PARTNER)
+  ) {
+    const sts = user.status;
+
+    if (roleCodes.includes(ROLE.VENDOR)) {
+      if (sts === VENDOR_STATUS.PENDING) {
+        return messages.forbidden(
+          "Your vendor account is pending approval. Please wait for admin verification.",
+          res
+        );
+      }
+      if (sts !== VENDOR_STATUS.APPROVED) {
+        return messages.forbidden(
+          "Your vendor account is not approved. Please contact support.",
+          res
+        );
+      }
+    }
+    if (roleCodes.includes(ROLE.DELIVERY_PARTNER)) {
+      if (sts === DELIVERY_PARTNER_STATUS.PENDING) {
+        return messages.forbidden(
+          "Your delivery partner account is pending approval. Please wait for admin verification.",
+          res
+        );
+      }
+      if (sts !== DELIVERY_PARTNER_STATUS.APPROVED) {
+        return messages.forbidden(
+          "Your delivery partner account is not approved. Please contact support.",
+          res
+        );
+      }
+    }
+  }
 
   const updatedUser = await User.findByIdAndUpdate(
     user._id,
@@ -126,7 +177,6 @@ const verifyOTPAndLogin = catchAsync(async (req, res) => {
   ).lean();
 
   const tokenData = await generateToken(updatedUser, deviceDetail);
-
   return messages.loginOtpVerified(
     {
       user: {

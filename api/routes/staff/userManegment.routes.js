@@ -12,6 +12,12 @@ const {
   uploadDeliveryPartnerFiles,
 } = require("../../middlewares/upload.middleware");
 
+router.put(
+  "/verify-status/:userId",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  usersControllers.verifyPendingStatus
+);
+
 //Vendor Routes
 router.post(
   "/create-vendor",
