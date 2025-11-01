@@ -1,14 +1,13 @@
-const {
-  createAdminService,
-  deleteAdminService,
-  getAdminsService,
-  getAdminByIdService,
-} = require("../../services/staff");
+const adminServices = require("../../services/staff");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
 const messages = require("../../helpers/utils/messages");
 
 const createAdminController = catchAsync(async (req, res) => {
-  const result = await createAdminService(req.body, req.files);
+  const result = await adminServices.createAdminService(
+    req.body,
+    req.files,
+    req.user
+  );
 
   if (result.success)
     return messages.successResponse(
@@ -23,48 +22,65 @@ const createAdminController = catchAsync(async (req, res) => {
 });
 
 const deleteAdminController = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await deleteAdminService(id);
-
+  const result = await adminServices.deleteAdminService(
+    req.params.id,
+    req.user
+  );
   if (result.success)
     return messages.successResponse(
       result.data,
       res,
       "Admin deleted successfully"
     );
-  if (result.notFound) return messages.recordNotFound(res, result.error);
-
+  if (result?.notFound) return messages.recordNotFound(res, result.error);
   return messages.failureResponse(result.error, res);
 });
 
-// GET ALL
 const getAllAdminsController = catchAsync(async (req, res) => {
-  const result = await getAdminsService();
-
+  const result = await adminServices.getAdminsService(req.user);
   if (result.success)
     return messages.successResponse(
       result.data,
       res,
       "Admins fetched successfully"
     );
-
   return messages.failureResponse(result.error, res);
 });
 
 // GET BY ID
 const getAdminByIdController = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await getAdminByIdService(id);
-
+  const result = await adminServices.getAdminByIdService(
+    req.params.id,
+    req.user
+  );
   if (result.success)
     return messages.successResponse(
       result.data,
       res,
-      "Admin fetched successfully"
+      "Admin details fetched successfully"
     );
-  if (result.notFound) return messages.recordNotFound(res, result.error);
-
+  if (result?.notFound) return messages.recordNotFound(res, result.error);
   return messages.failureResponse(result.error, res);
+});
+
+const updateSelfAdminController = catchAsync(async (req, res) => {
+  const result = await adminServices.updateSelfAdminService(
+    req.user,
+    req.body,
+    req.files
+  );
+
+  if (result?.success) {
+    return messages.successResponse(
+      result?.data,
+      res,
+      "Profile updated successfully"
+    );
+  } else if (result?.notFound) {
+    return messages.recordNotFound(res, result.error);
+  } else {
+    return messages.failureResponse(result.error || "Update failed", res);
+  }
 });
 
 module.exports = {
@@ -72,4 +88,5 @@ module.exports = {
   deleteAdminController,
   getAllAdminsController,
   getAdminByIdController,
+  updateSelfAdminController,
 };

@@ -1,6 +1,6 @@
 // /api/services/email.service.js
 const nodemailer = require("nodemailer");
-const mjml = require("mjml");
+const mjml2html = require("mjml");
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -11,10 +11,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
-
-/**
- * Send email with given subject and HTML body
- */
 
 const sendEmail = async (to, subject, html) => {
   try {
@@ -32,13 +28,22 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-const renderTemplate = (template, data = {}) => {
-  let html = template;
-  for (const key in data) {
-    const value = data[key] ?? "";
-    html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
+function replacePlaceholders(template, data) {
+  return template.replace(/{{(.*?)}}/g, (_, key) => {
+    const value = data[key.trim()];
+    return value !== undefined && value !== null ? value : "";
+  });
+}
+
+function renderTemplate(template, data = {}) {
+  const filledTemplate = replacePlaceholders(template, data);
+  const { html, errors } = mjml2html(filledTemplate, { beautify: true });
+
+  if (errors && errors.length) {
+    console.error("MJML rendering errors:", errors);
   }
-  return mjml(html, { minify: true }).html;
-};
+
+  return html;
+}
 
 module.exports = { sendEmail, renderTemplate };

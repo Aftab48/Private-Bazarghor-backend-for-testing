@@ -14,14 +14,14 @@ const {
 
 router.put(
   "/verify-status/:userId",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.verifyPendingStatus
 );
 
 //Vendor Routes
 router.post(
   "/create-vendor",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(vendorsValidate.createVendorByAdmin),
   uploadVendorFiles,
   usersControllers.createVendorByAdminController
@@ -29,19 +29,19 @@ router.post(
 
 router.get(
   "/get-vendor-list",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getAllVendorsController
 );
 
 router.get(
   "/get-vendor/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getVendorByIdController
 );
 
 router.put(
   "/update-vendor/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(updateAllUsersValidate.updateVendorsByAdmin),
   uploadVendorFiles,
   usersControllers.updateVendorByAdminController
@@ -49,14 +49,14 @@ router.put(
 
 router.delete(
   "/delete-vendor/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.deleteVendorByAdminController
 );
 
 //Delivery Partner Routes
 router.post(
   "/create-delivery-partner",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(vendorsValidate.createDeliveryPartnerByAdmin),
   uploadDeliveryPartnerFiles,
   usersControllers.createDeliveryPartnerByAdminController
@@ -64,19 +64,19 @@ router.post(
 
 router.get(
   "/get-delivery-partner-list",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getAllDeliveryPartnersController
 );
 
 router.get(
   "/get-delivery-partner/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getDeliveryPartnerByIdController
 );
 
 router.put(
   "/update-delivery-partner/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(updateAllUsersValidate.updateDeliveryPartnersByAdmin),
   uploadDeliveryPartnerFiles,
   usersControllers.updateDeliveryPartnerByAdminController
@@ -84,14 +84,14 @@ router.put(
 
 router.delete(
   "/delete-delivery-partner/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.deleteDeliveryPartnerByAdminController
 );
 
 //Customers Routes
 router.post(
   "/create-customer",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(vendorsValidate.createCustomerByAdmin),
   uploadCustomerFiles,
   usersControllers.createCustomerByAdminController
@@ -99,19 +99,19 @@ router.post(
 
 router.get(
   "/get-customer-list",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getAllCustomersController
 );
 
 router.get(
   "/get-customer/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.getCustomerByIdController
 );
 
 router.put(
   "/update-customer/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   validate(updateAllUsersValidate.updateCustomerByAdmin),
   uploadCustomerFiles,
   usersControllers.updateCustomerByAdminController
@@ -119,7 +119,7 @@ router.put(
 
 router.delete(
   "/delete-customer/:id",
-  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   usersControllers.deleteCustomerByAdminController
 );
 

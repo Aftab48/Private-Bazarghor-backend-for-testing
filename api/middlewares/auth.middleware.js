@@ -7,7 +7,6 @@ exports.authMiddleware = (allowedRoles = []) => {
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      // messages.unAuthorizedRequest expects (message, res)
       return messages.unAuthorizedRequest("Authorization token missing", res);
     }
 
@@ -18,7 +17,6 @@ exports.authMiddleware = (allowedRoles = []) => {
       return messages.unAuthorizedRequest("Invalid or expired token", res);
     }
 
-    // store only the user id for downstream handlers that expect an id
     req.user = decoded.id || decoded._id || decoded;
 
     if (allowedRoles.length > 0) {
@@ -34,16 +32,17 @@ exports.authMiddleware = (allowedRoles = []) => {
 exports.checkSuperAdmin = async (req, res, next) => {
   try {
     const userId = req.user;
-    console.log("userId:", userId);
 
     const user = await User.findById(userId).lean();
     if (!user) return messages.recordNotFound(res, "User not found");
 
-    const hasSuperRole = user.roles?.some((r) => r.code === ROLE.SUPER_ADMIN);
-    if (!hasSuperRole) {
-      return messages.forbidden(res, "Access denied: Super Admins only");
+    const allowedAdminRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN];
+    const isAdmin = user?.roles?.some((r) =>
+      allowedAdminRoles.includes(r.code)
+    );
+    if (!isAdmin) {
+      return { success: false, error: "Unauthorized access by admin" };
     }
-
     next();
   } catch (err) {
     console.error("checkSuperAdmin error:", err);

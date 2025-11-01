@@ -880,15 +880,51 @@ const getAdmins = async (userId) => {
   return { success: true, data: user };
 };
 
-const updateAdmin = async (userId, body, files) => {
+const updateAdmin = async (targetUserId, body, files, currentUser) => {
   try {
-    if (!userId) {
+    if (!targetUserId) {
       return { success: false, notFound: true, error: "User ID missing" };
     }
 
-    const user = await User.findById(userId).lean();
-    if (!user) {
+    const targetUser = await User.findById(targetUserId).lean();
+    if (!targetUser) {
       return { success: false, notFound: true, error: "Admin not found" };
+    }
+
+    const user = await User.findById(currentUser).lean();
+    if (!user) {
+      return { success: false, error: "Unauthorized: User not found" };
+    }
+
+    const userRoles = user.roles.map((r) => r.code);
+    const targetRoles = targetUser.roles.map((r) => r.code);
+
+    if (userRoles.includes(ROLE.SUPER_ADMIN)) {
+      if (
+        targetRoles.includes(ROLE.SUPER_ADMIN) &&
+        user._id.toString() !== targetUserId
+      ) {
+        return {
+          success: false,
+          error: "Super Admin cannot update another Super Admin",
+        };
+      }
+    } else if (userRoles.includes(ROLE.ADMIN)) {
+      if (!targetRoles.includes(ROLE.SUB_ADMIN)) {
+        return {
+          success: false,
+          error: "Admin can only update Sub Admin details",
+        };
+      }
+    } else if (userRoles.includes(ROLE.SUB_ADMIN)) {
+      if (user._id.toString() !== targetUserId) {
+        return {
+          success: false,
+          error: "Sub Admin can only update their own profile",
+        };
+      }
+    } else {
+      return { success: false, error: "Unauthorized access" };
     }
 
     const allowedFields = ["firstName", "lastName", "email", "mobNo"];
@@ -905,16 +941,17 @@ const updateAdmin = async (userId, body, files) => {
         files.profilePicture[0]
       );
     }
+
     if (Object.keys(update).length === 0) {
       return {
         success: false,
-        notFound: true,
+        validation: true,
         error: "No fields provided to update",
       };
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      userId,
+      targetUserId,
       { $set: update },
       { new: true }
     )
@@ -991,8 +1028,8 @@ const forgotPassword = async (email) => {
       resetPassword: { code: OTP, expireTime },
     });
 
-    const html = renderTemplate(templates.passwordReset, {
-      firstName: user.firstName || user.name || "User",
+    const html = renderTemplate(templates.passwordResetOTP, {
+      firstName: user.firstName,
       OTP,
     });
 

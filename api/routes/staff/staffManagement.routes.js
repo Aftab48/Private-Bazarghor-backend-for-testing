@@ -1,17 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const {
-  createAdminController,
-  deleteAdminController,
-  getAllAdminsController,
-  getAdminByIdController,
-} = require("../../controllers/staff/staffManagement.controller");
-const {
-  updateAdminController,
-  forgotPasswordController,
-  resetPasswordController,
-  changeAdminPassword,
-} = require("../../controllers/admin/admin.controller");
+const addStaff = require("../../controllers/staff/staffManagement.controller");
+const adminControllers = require("../../controllers/admin/admin.controller");
+const validate = require("../../middlewares/validate");
+const adminValidate = require("../../helpers/utils/validations/auth/index");
+const { ROLE } = require("../../../config/constants/authConstant");
 const {
   adminLogin,
   getAdminsController,
@@ -20,13 +13,6 @@ const { logoutUser } = require("../../services/auth");
 const {
   changePasswords,
 } = require("../../helpers/utils/validations/auth/changePassword");
-const validate = require("../../middlewares/validate");
-const {
-  createAdminsValidation,
-  updateAdminsValidation,
-  loginAdmin,
-  resetPasswordCode,
-} = require("../../helpers/utils/validations/auth/index");
 const {
   checkSuperAdmin,
   authMiddleware,
@@ -35,49 +21,53 @@ const {
   uploadAdminProfile,
   upload,
 } = require("../../middlewares/upload.middleware");
-const { ROLE } = require("../../../config/constants/authConstant");
 
 router.post(
   "/add-admin",
-  authMiddleware([]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
-  validate(createAdminsValidation),
+  validate(adminValidate.createAdminsValidation),
   uploadAdminProfile,
-  createAdminController
+  addStaff.createAdminController
 );
 
 router.put(
   "/update-admin/:id",
-  authMiddleware([ROLE.SUPER_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
-  validate(updateAdminsValidation),
+  validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
-  updateAdminController
+  adminControllers.updateAdminController
 );
 
 router.get(
   "/get-all-admin",
-  authMiddleware([]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
-  getAllAdminsController
+  addStaff.getAllAdminsController
 );
 
 router.get(
   "/get-adminById/:id",
-  authMiddleware([]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
-  getAdminByIdController
+  addStaff.getAdminByIdController
 );
 
 router.delete(
   "/delete-admin/:id",
-  authMiddleware([ROLE.SUPER_ADMIN]),
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
-  deleteAdminController
+  addStaff.deleteAdminController
 );
 
 //this endpoint of admin and sub admin when he is logged in
-router.post("/login", upload.none(), validate(loginAdmin), adminLogin);
+router.post(
+  "/login",
+  upload.none(),
+  validate(adminValidate.loginAdmin),
+  adminLogin
+);
 router.post("/logout", authMiddleware([]), logoutUser);
 
 router.get(
@@ -89,31 +79,36 @@ router.get(
 router.get(
   "/get-sub-admin-profile",
   authMiddleware([ROLE.SUB_ADMIN]),
-  getAdminsController
+  adminControllers.getAdminsController
 );
 
 router.put(
   "/update-admin",
   authMiddleware([ROLE.ADMIN]),
-  validate(updateAdminsValidation),
+  validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
-  updateAdminController
+  addStaff.updateSelfAdminController
 );
 
 router.put(
   "/update-sub-admin",
   authMiddleware([ROLE.SUB_ADMIN]),
-  validate(updateAdminsValidation),
+  validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
-  updateAdminController
+  addStaff.updateSelfAdminController
 );
 
-router.post("/forget-password", upload.none(), forgotPasswordController);
+router.post(
+  "/forget-password",
+  upload.none(),
+  adminControllers.forgotPasswordController
+);
+
 router.post(
   "/reset-password",
-  validate(resetPasswordCode),
+  validate(adminValidate.resetPasswordCode),
   upload.none(),
-  resetPasswordController
+  adminControllers.resetPasswordController
 );
 
 router.post(
@@ -121,7 +116,7 @@ router.post(
   authMiddleware([ROLE.ADMIN]),
   validate(changePasswords),
   upload.none(),
-  changeAdminPassword
+  adminControllers.changeAdminPassword
 );
 
 router.post(
@@ -129,7 +124,7 @@ router.post(
   authMiddleware([ROLE.SUB_ADMIN]),
   validate(changePasswords),
   upload.none(),
-  changeAdminPassword
+  adminControllers.changeAdminPassword
 );
 
 module.exports = router;

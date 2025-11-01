@@ -10,7 +10,6 @@ const { sendEmail, renderTemplate } = require("../services/send.email");
 const FileService = require("../services/file.service");
 const templates = require("../templates/emailTemplates.mjml");
 
-//Vendors Services
 const createVendorByAdmin = async (req, createdBy) => {
   try {
     const {
@@ -73,7 +72,6 @@ const createVendorByAdmin = async (req, createdBy) => {
       const html = renderTemplate(templates.vendorCreated, {
         firstName: firstName || "Vendor",
         mobNo,
-        // appName: process.env.APP_NAME || "Grocery App",
       });
 
       await sendEmail(email, "Your Vendor Account Details", html);
