@@ -20,6 +20,7 @@ const createVendorByAdmin = async (req, createdBy) => {
       storeName,
       pinCode,
       storeAddress,
+      gender,
       roleType, // e.g. "VENDOR"
     } = req.body;
 
@@ -47,6 +48,7 @@ const createVendorByAdmin = async (req, createdBy) => {
       lastName,
       mobNo,
       pinCode,
+      gender,
       roles: [{ roleId: vendorRole._id, code: vendorRole.code }],
       isActive: true,
       profileCompleted: 0,
