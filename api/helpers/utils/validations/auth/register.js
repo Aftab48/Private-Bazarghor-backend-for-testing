@@ -1,27 +1,28 @@
 const joi = require("joi");
+const {
+  VENDOR_STATUS,
+} = require("../../../../../config/constants/authConstant");
 
 const registerVendor = joi.object({
-  // Basic Information
-  firstName: joi
-    .string()
-    .required()
-    .min(2)
-    .max(50)
-    .error(
-      new Error("First name is required and must be between 2-50 characters")
-    ),
+  // Basic Info
+  firstName: joi.string().min(2).max(50).required().messages({
+    "string.empty": "First name is required",
+    "string.min": "First name must be at least 2 characters",
+    "string.max": "First name cannot exceed 50 characters",
+  }),
 
-  lastName: joi
-    .string()
-    .allow("", null)
-    .max(50)
-    .error(new Error("Last name must be maximum 50 characters")),
+  lastName: joi.string().allow("", null).max(50).messages({
+    "string.max": "Last name cannot exceed 50 characters",
+  }),
 
   email: joi
     .string()
     .email({ tlds: { allow: false } })
     .required()
-    .error(new Error("Email must be a valid email address")),
+    .messages({
+      "string.email": "Email must be a valid email address",
+      "string.empty": "Email is required",
+    }),
 
   mobNo: joi
     .string()
@@ -32,34 +33,29 @@ const registerVendor = joi.object({
       "string.pattern.base": "Mobile number must be exactly 10 digits",
     }),
 
-  password: joi
-    .string()
-    .min(6)
-    .max(50)
-    .error(new Error("Password must be between 6-50 characters")),
+  password: joi.string().min(6).max(50).messages({
+    "string.empty": "Password is required",
+    "string.min": "Password must be at least 6 characters",
+    "string.max": "Password cannot exceed 50 characters",
+  }),
 
-  // Personal Details
   gender: joi
     .string()
     .valid("male", "female", "other")
-    .optional()
-    .allow(null, "")
-    .error(new Error("Gender must be one of: male, female, other")),
-
-  dob: joi
-    .date()
-    .optional()
-    .allow(null)
-    .error(new Error("Date of birth must be a valid date")),
-
-  cityNm: joi
-    .string()
-    .optional()
     .allow("", null)
-    .max(100)
-    .error(new Error("City name must be maximum 100 characters")),
+    .messages({
+      "any.only": "Gender must be one of: male, female, or other",
+    }),
 
-  pincode: joi
+  dob: joi.date().allow(null).messages({
+    "date.base": "Date of birth must be a valid date",
+  }),
+
+  cityNm: joi.string().allow("", null).max(100).messages({
+    "string.max": "City name cannot exceed 100 characters",
+  }),
+
+  pinCode: joi
     .string()
     .regex(/^[0-9]{6}$/)
     .required()
@@ -68,31 +64,42 @@ const registerVendor = joi.object({
       "string.pattern.base": "Pincode must be exactly 6 digits",
     }),
 
-  // Shop/Business Details
-  shopname: joi
-    .string()
-    .required()
-    .min(2)
-    .max(100)
-    .error(
-      new Error("Shop name is required and must be between 2-100 characters")
-    ),
-
-  shopaddress: joi
-    .string()
-    .required()
-    .min(1)
-    .max(500)
-    .error(
-      new Error(
-        "Shop address is required and must be between 10-500 characters"
+  // 🏪 Store Info
+  storeDetails: joi.object({
+    storeName: joi.string().min(2).max(100).required().messages({
+      "string.empty": "Store name is required",
+      "string.min": "Store name must be at least 2 characters",
+      "string.max": "Store name cannot exceed 100 characters",
+    }),
+    storeAddress: joi.string().min(5).max(255).required().messages({
+      "string.empty": "Store address is required",
+      "string.min": "Store address must be at least 5 characters",
+      "string.max": "Store address cannot exceed 255 characters",
+    }),
+    contactNumber: joi
+      .string()
+      .pattern(/^[0-9]{10}$/)
+      .messages({
+        "string.pattern.base": "Contact number must be exactly 10 digits",
+      }),
+    email: joi
+      .string()
+      .email({ tlds: { allow: false } })
+      .messages({
+        "string.email": "Store email must be a valid email address",
+      }),
+    storePictures: joi
+      .array()
+      .items(
+        joi.object({
+          fileName: joi.string().allow(null, ""),
+          filePath: joi.string().allow(null, ""),
+          fileType: joi.string().allow(null, ""),
+        })
       )
-    ),
-
-  consentAgree: joi
-    .boolean()
-    .valid(true)
-    .error(new Error("You must give consent to proceed")),
+      .default([]),
+    storeStatus: joi.number().default(VENDOR_STATUS.PENDING),
+  }),
 });
 
 const createDeliveryPartner = joi

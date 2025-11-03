@@ -28,22 +28,63 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-function replacePlaceholders(template, data) {
-  return template.replace(/{{(.*?)}}/g, (_, key) => {
-    const value = data[key.trim()];
-    return value !== undefined && value !== null ? value : "";
+function replacePlaceholders(templateStr, data = {}) {
+  if (typeof templateStr !== "string") return templateStr;
+
+  return templateStr.replace(/{{\s*(.*?)\s*}}/g, (_, key) => {
+    const path = key
+      .split(".")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    let value = data;
+    for (const p of path) {
+      if (value == null) break;
+      value = value[p];
+    }
+    if (value !== undefined && value !== null && typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "";
+      }
+    }
+    return value !== undefined && value !== null ? String(value) : "";
   });
 }
 
 function renderTemplate(template, data = {}) {
-  const filledTemplate = replacePlaceholders(template, data);
-  const { html, errors } = mjml2html(filledTemplate, { beautify: true });
+  try {
+    let mjml;
+    if (typeof template === "function") {
+      mjml = template(data);
+      if (typeof mjml !== "string") {
+        mjml = String(mjml || "");
+      }
+    } else if (typeof template === "string") {
+      mjml = replacePlaceholders(template, data);
+    } else {
+      console.warn(
+        "renderTemplate received non-string, non-function template. Coercing to string.",
+        {
+          templateType: typeof template,
+          template,
+        }
+      );
+      mjml = String(template || "");
+      mjml = replacePlaceholders(mjml, data);
+    }
 
-  if (errors && errors.length) {
-    console.error("MJML rendering errors:", errors);
+    const { html, errors } = mjml2html(mjml, { beautify: true });
+
+    if (errors && errors.length) {
+      console.error("MJML rendering errors:", errors);
+    }
+
+    return html;
+  } catch (err) {
+    console.error("renderTemplate error:", err);
+    throw err;
   }
-
-  return html;
 }
 
 module.exports = { sendEmail, renderTemplate };

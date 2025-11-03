@@ -22,8 +22,7 @@ const sendOTP = catchAsync(async (req, res) => {
 
   let user = await User.findOne({ mobNo }).lean();
 
-  // 🔹 Check active status (for all users)
-  if (user.isActive === false) {
+  if (user?.isActive === false) {
     return messages.forbidden(
       "Your account is deactivated. Please contact support.",
       res

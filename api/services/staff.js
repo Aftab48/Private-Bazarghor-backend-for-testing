@@ -125,7 +125,6 @@ const createAdminService = async (body, files, creatorUser) => {
         const html = renderTemplate(templates.adminCreates, {
           firstName,
           email,
-          mobNo,
           generatedPassword,
         });
 

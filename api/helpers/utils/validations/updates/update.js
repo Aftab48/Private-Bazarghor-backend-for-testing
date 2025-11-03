@@ -29,83 +29,55 @@ const updateCustomer = joi.object({
       "any.only": "Gender must be one of: male, female, other",
     }),
 });
-
 const updateVendors = joi.object({
-  // Basic Information
-  firstName: joi
+  firstName: joi.string().min(2).max(50),
+  lastName: joi.string().min(2).max(50),
+  email: joi.string().email().messages({
+    "string.email": "Email must be valid",
+  }),
+  mobNo: joi
     .string()
-    .min(2)
-    .max(50)
-    .error(
-      new Error("First name is required and must be between 2-50 characters")
-    ),
-
-  lastName: joi
-    .string()
-    .allow("", null)
-    .max(50)
-    .error(new Error("Last name must be maximum 50 characters")),
-
-  email: joi
-    .string()
-    .email({ tlds: { allow: false } })
-    .error(new Error("Email must be a valid email address")),
-
-  // mobNo: joi
-  //   .string()
-  //   .pattern(/^[0-9]{10}$/)
-  //   .messages({
-  //     "string.empty": "Mobile number is required",
-  //     "string.pattern.base": "Mobile number must be exactly 10 digits",
-  //   }),
-
-  // Personal Details
-  gender: joi
-    .string()
-    .valid("male", "female", "other")
-    .optional()
-    .allow(null, "")
-    .error(new Error("Gender must be one of: male, female, other")),
-
-  dob: joi
-    .date()
-    .optional()
-    .allow(null)
-    .error(new Error("Date of birth must be a valid date")),
-
-  cityNm: joi
-    .string()
-    .optional()
-    .allow("", null)
-    .max(100)
-    .error(new Error("City name must be maximum 100 characters")),
-
-  pinCode: joi
-    .string()
-    .regex(/^[0-9]{6}$/)
+    .pattern(/^[0-9]{10}$/)
     .messages({
-      "string.empty": "Pincode is required",
-      "string.pattern.base": "Pincode must be exactly 6 digits",
+      "string.pattern.base": "Mobile number must be 10 digits",
     }),
+  dob: joi.date().optional(),
+  gender: joi.string().valid("Male", "Female", "Other").optional(),
+  cityNm: joi.string().allow("").max(100),
+  pinCode: joi.string().allow("").max(10),
 
-  // // Shop/Business Details
-  // storeName: joi
-  //   .string()
-  //   .min(2)
-  //   .max(100)
-  //   .error(
-  //     new Error("Shop name is required and must be between 2-100 characters")
-  //   ),
-
-  // storeAddress: joi
-  //   .string()
-  //   .min(1)
-  //   .max(500)
-  //   .error(
-  //     new Error(
-  //       "Shop address is required and must be between 10-500 characters"
-  //     )
-  //   ),
+  storeName: joi.string().min(3).max(100),
+  storeAddress: joi.string().min(5).max(300),
+  openingTime: joi
+    .string()
+    .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .messages({
+      "string.pattern.base":
+        "Opening time must be in HH:mm format (e.g. 09:00)",
+    }),
+  closingTime: joi
+    .string()
+    .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .messages({
+      "string.pattern.base":
+        "Closing time must be in HH:mm format (e.g. 21:30)",
+    }),
+  workingDays: joi
+    .array()
+    .items(
+      joi
+        .string()
+        .valid(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        )
+    ),
+  description: joi.string().allow("").max(500),
 });
 
 const updateDeliveryPartners = joi
@@ -244,81 +216,49 @@ const updateCustomerByAdmin = joi.object({
 });
 
 const updateVendorsByAdmin = joi.object({
-  // Basic Information
-  firstName: joi
-    .string()
-    .min(2)
-    .max(50)
-    .error(
-      new Error("First name is required and must be between 2-50 characters")
-    ),
-
-  lastName: joi
-    .string()
-    .allow("", null)
-    .max(50)
-    .error(new Error("Last name must be maximum 50 characters")),
-
-  email: joi
-    .string()
-    .email({ tlds: { allow: false } })
-    .error(new Error("Email must be a valid email address")),
-
+  firstName: joi.string().min(2).max(50),
+  lastName: joi.string().min(2).max(50),
+  email: joi.string().email(),
   mobNo: joi
     .string()
     .pattern(/^[0-9]{10}$/)
     .messages({
-      "string.empty": "Mobile number is required",
-      "string.pattern.base": "Mobile number must be exactly 10 digits",
+      "string.pattern.base": "Mobile number must be 10 digits",
     }),
-
-  // Personal Details
-  gender: joi
+  dob: joi.date().optional(),
+  gender: joi.string().valid("Male", "Female", "Other"),
+  cityNm: joi.string().allow("").max(100),
+  pinCode: joi.string().allow("").max(10),
+  isActive: joi.boolean(),
+  status: joi.number().valid(0, 1, 2),
+  // store fields
+  storeName: joi.string().min(3).max(100),
+  storeAddress: joi.string().min(5).max(300),
+  category: joi.string().allow("").max(100),
+  contactNumber: joi
     .string()
-    .valid("male", "female", "other")
-    .optional()
-    .allow(null, "")
-    .error(new Error("Gender must be one of: male, female, other")),
-
-  dob: joi
-    .date()
-    .optional()
-    .allow(null)
-    .error(new Error("Date of birth must be a valid date")),
-
-  cityNm: joi
-    .string()
-    .optional()
-    .allow("", null)
-    .max(100)
-    .error(new Error("City name must be maximum 100 characters")),
-
-  pinCode: joi
-    .string()
-    .regex(/^[0-9]{6}$/)
+    .pattern(/^[0-9]{10}$/)
     .messages({
-      "string.empty": "Pincode is required",
-      "string.pattern.base": "Pincode must be exactly 6 digits",
+      "string.pattern.base": "Contact number must be 10 digits",
     }),
-
-  // Shop/Business Details
-  storeName: joi
-    .string()
-    .min(2)
-    .max(100)
-    .error(
-      new Error("Shop name is required and must be between 2-100 characters")
+  openingTime: joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  closingTime: joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  workingDays: joi
+    .array()
+    .items(
+      joi
+        .string()
+        .valid(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        )
     ),
-
-  storeAddress: joi
-    .string()
-    .min(1)
-    .max(500)
-    .error(
-      new Error(
-        "Shop address is required and must be between 10-500 characters"
-      )
-    ),
+  description: joi.string().allow("").max(500),
 });
 
 const updateDeliveryPartnersByAdmin = joi

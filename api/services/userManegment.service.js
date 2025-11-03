@@ -1,5 +1,7 @@
 const User = require("../models/user");
 const { Role } = require("../models/role");
+const Store = require("../models/storeModel");
+const { generateStoreCode } = require("../helpers/utils/genStoreCode");
 const {
   VENDOR_STATUS,
   DELIVERY_PARTNER_STATUS,
@@ -22,6 +24,7 @@ const createVendorByAdmin = async (req, createdBy) => {
       storeAddress,
       gender,
       roleType, // e.g. "VENDOR"
+      cityNm,
     } = req.body;
 
     if (!mobNo) return { success: false, error: "Mobile number is required" };
@@ -42,6 +45,13 @@ const createVendorByAdmin = async (req, createdBy) => {
       );
     }
 
+    let storeCode = generateStoreCode();
+    let existingStore = await Store.findOne({ storeCode });
+    while (existingStore) {
+      storeCode = generateStoreCode();
+      existingStore = await Store.findOne({ storeCode });
+    }
+
     const vendorData = {
       email,
       firstName,
@@ -49,17 +59,13 @@ const createVendorByAdmin = async (req, createdBy) => {
       mobNo,
       pinCode,
       gender,
+      cityNm,
       roles: [{ roleId: vendorRole._id, code: vendorRole.code }],
       isActive: true,
       profileCompleted: 0,
-      status: VENDOR_STATUS.APPROVED,
+      status: VENDOR_STATUS.PENDING,
       termsAndCondition: false,
-      storeDetails: {
-        storeName: storeName,
-        storeAddress: storeAddress,
-        storePictures,
-      },
-      createdBy, // 🟢 Store the ID of the creator
+      createdBy,
     };
 
     if (req.files?.profilePicture?.[0]) {
@@ -69,66 +75,103 @@ const createVendorByAdmin = async (req, createdBy) => {
     }
 
     const vendor = await User.create(vendorData);
+    const storeData = {
+      vendorId: vendor._id,
+      storeCode,
+      storeName,
+      storeAddress,
+      contactNumber: mobNo,
+      email,
+      storePictures,
+      storeStatus: VENDOR_STATUS.PENDING,
+    };
+
+    const store = await Store.create(storeData);
+    vendor.storeDetails = store._id;
+    await vendor.save();
 
     if (email) {
       const html = renderTemplate(templates.vendorCreated, {
-        firstName: firstName || "Vendor",
+        firstName,
         mobNo,
       });
-
-      await sendEmail(email, "Your Vendor Account Details", html);
+      await sendEmail(email, "Your Vendor Account is Created", html);
     }
 
-    return { success: true, data: vendor };
+    return {
+      success: true,
+      code: "SUCCESS",
+      message: "Vendor created successfully",
+      data: {
+        _id: vendor._id,
+        firstName: vendor.firstName,
+        lastName: vendor.lastName,
+        email: vendor.email,
+        mobNo: vendor.mobNo,
+        storeDetails: {
+          storeCode: store.storeCode,
+          storeName: store.storeName,
+          storeAddress: store.storeAddress,
+        },
+      },
+    };
   } catch (err) {
     logger.error("Admin Vendor creation error:", err);
+    FileService.deleteUploadedFiles(req.files);
     return { success: false, error: err.message };
   }
 };
 
 const getAllVendors = async (query = {}) => {
   try {
-    const vendors = await User.find({ "roles.code": ROLE.VENDOR, ...query })
-      .select(
-        "firstName lastName email mobNo roles isActive  status storeDetails profilePicture"
-      )
+    const stores = await Store.find(query)
+      .populate({
+        path: "vendorId",
+        match: { "roles.code": ROLE.VENDOR },
+        select:
+          "firstName lastName email mobNo roles isActive status profilePicture",
+      })
       .lean();
-    return { success: true, data: vendors };
+
+    const filteredStores = stores.filter((s) => s.vendorId);
+
+    return { success: true, data: filteredStores };
   } catch (err) {
-    logger.error("Get vendors error:", err);
+    logger.error("Get all vendors error:", err);
     return { success: false, error: err.message };
   }
 };
 
 const getVendorById = async (id) => {
   try {
-    const vendor = await User.findOne({
-      _id: id,
-      "roles.code": ROLE.VENDOR,
-    }).select(
-      "firstName lastName email mobNo roles isActive  status storeDetails profilePicture"
-    );
-    if (!vendor) return { success: false, error: "Vendor not found" };
-    return { success: true, data: vendor };
+    const store = await Store.findOne({ vendorId: id })
+      .populate({
+        path: "vendorId",
+        match: { "roles.code": ROLE.VENDOR },
+        select:
+          "firstName lastName email mobNo roles isActive status profilePicture",
+      })
+      .lean();
+
+    if (!store) return { success: false, error: "Vendor not found" };
+
+    return { success: true, data: store };
   } catch (err) {
     logger.error("Get vendor by ID error:", err);
     return { success: false, error: err.message };
   }
 };
-
 const updateVendorByAdmin = async (id, body, files) => {
   try {
-    if (!id)
-      return { success: false, notFound: true, error: "Vendor ID missing" };
+    if (!id) return { success: false, error: "Vendor ID missing" };
 
     const vendor = await User.findOne({
       _id: id,
       "roles.code": ROLE.VENDOR,
     }).lean();
-
     if (!vendor) return { success: false, error: "Vendor not found" };
 
-    const allowedFields = [
+    const userFields = [
       "firstName",
       "lastName",
       "email",
@@ -139,80 +182,86 @@ const updateVendorByAdmin = async (id, body, files) => {
       "pinCode",
       "isActive",
       "status",
-      "storeName",
-      "storeAddress",
     ];
 
-    const update = {};
-
-    for (const key of allowedFields) {
-      if (
-        Object.prototype.hasOwnProperty.call(body, key) &&
-        body[key] !== undefined
-      ) {
-        update[key] = body[key];
+    const userUpdate = {};
+    for (const key of userFields) {
+      if (body[key] !== undefined && body[key] !== null) {
+        userUpdate[key] = body[key];
       }
     }
 
     if (files?.profilePicture?.[0]) {
-      update.profilePicture = FileService.generateFileObject(
+      userUpdate.profilePicture = FileService.generateFileObject(
         files.profilePicture[0]
       );
     }
 
+    let updatedUser = null;
+    if (Object.keys(userUpdate).length > 0) {
+      updatedUser = await User.findByIdAndUpdate(
+        id,
+        { $set: userUpdate },
+        {
+          new: true,
+          select:
+            "firstName lastName email mobNo cityNm pinCode profilePicture isActive status",
+        }
+      ).lean();
+    }
+
+    const storeFields = [
+      "storeName",
+      "storeAddress",
+      "openingTime",
+      "closingTime",
+      "workingDays",
+      "contactNumber",
+      "email",
+      "description",
+      "storeStatus",
+      "category",
+    ];
+
+    const storeUpdate = {};
+    for (const key of storeFields) {
+      if (body[key] !== undefined && body[key] !== null) {
+        storeUpdate[key] = body[key];
+      }
+    }
+
     if (files?.storePictures?.length) {
-      const pictures = files.storePictures.map((f) =>
+      storeUpdate.storePictures = files.storePictures.map((f) =>
         FileService.generateFileObject(f)
       );
-      update.storeDetails = update.storeDetails || {};
-      update.storeDetails.storePictures = pictures;
     }
 
-    if (Object.keys(update).length === 0) {
-      return { success: false, error: "No valid fields provided for update" };
-    }
-    const updateQuery = {};
-    if (update.storeName) {
-      updateQuery["storeDetails.storeName"] = update.storeName;
-      delete update.storeName;
-    }
+    if (body.mobNo) storeUpdate.contactNumber = body.mobNo;
+    if (body.email) storeUpdate.email = body.email;
 
-    if (update.storeAddress) {
-      updateQuery["storeDetails.storeAddress"] = update.storeAddress;
-      delete update.storeAddress;
-    }
-    if (update.storeDetails) {
-      for (const [key, value] of Object.entries(update.storeDetails)) {
-        updateQuery[`storeDetails.${key}`] = value;
-      }
-      delete update.storeDetails;
+    let updatedStore = null;
+    if (Object.keys(storeUpdate).length > 0) {
+      updatedStore = await Store.findOneAndUpdate(
+        { vendorId: id },
+        { $set: storeUpdate },
+        {
+          new: true,
+          select:
+            "storeName storeAddress contactNumber email storePictures storeStatus",
+        }
+      ).lean();
     }
 
-    Object.assign(updateQuery, update);
+    const response = {
+      _id: id,
+      updatedUserFields: userUpdate,
+      updatedStoreFields: storeUpdate,
+    };
 
-    const updatedVendor = await User.findByIdAndUpdate(
-      id,
-      { $set: updateQuery },
-      { new: true }
-    ).lean();
+    if (updatedUser) response.user = updatedUser;
+    if (updatedStore) response.store = updatedStore;
 
-    if (!updatedVendor) {
-      return { success: false, error: "Vendor not found or update failed" };
-    }
-
-    const resp = { _id: updatedVendor._id };
-
-    for (const key of Object.keys(updateQuery)) {
-      if (key.startsWith("storeDetails.")) {
-        const field = key.split(".")[1];
-        resp.storeDetails = resp.storeDetails || {};
-        resp.storeDetails[field] = updatedVendor.storeDetails?.[field] ?? null;
-      } else {
-        resp[key] = updatedVendor[key];
-      }
-    }
-
-    return { success: true, data: resp };
+    return { success: true, data: response };
   } catch (err) {
     logger.error("Update vendor by admin error:", err);
     return { success: false, error: err.message };
@@ -708,12 +757,12 @@ const verifyPendingStatus = async (adminId, userId, roleType) => {
     return { success: false, error: "Missing adminId, userId, or roleType" };
   }
 
-  const checkUsers = await User.findOne({
+  const user = await User.findOne({
     _id: userId,
     "roles.code": roleType,
   }).lean();
 
-  if (!checkUsers) return { success: false, error: "Vendor not found" };
+  if (!user) return { success: false, error: "Vendor not found" };
 
   const admin = await User.findById(adminId).lean();
   const allowedAdminRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN];
@@ -722,23 +771,20 @@ const verifyPendingStatus = async (adminId, userId, roleType) => {
     return { success: false, error: "Unauthorized access" };
   }
 
-  const user = await User.findById(userId).lean();
-  if (!user) {
-    return { success: false, error: "User not found" };
-  }
-
-  const userRoleCodes = user.roles.map((r) => r.code);
-  if (!userRoleCodes.includes(roleType)) {
-    return { success: false, error: `User does not have role: ${roleType}` };
-  }
-
-  let update = {};
+  const update = {};
 
   if (roleType === ROLE.VENDOR) {
     if (user.status === VENDOR_STATUS.APPROVED) {
       return { success: false, error: "Vendor already approved" };
     }
     update.status = VENDOR_STATUS.APPROVED;
+
+    // ✅ Also update store status (if vendor has a store)
+    if (user.storeDetails) {
+      await Store.findByIdAndUpdate(user.storeDetails, {
+        $set: { storeStatus: VENDOR_STATUS.APPROVED },
+      });
+    }
   }
 
   if (roleType === ROLE.DELIVERY_PARTNER) {
@@ -758,22 +804,16 @@ const verifyPendingStatus = async (adminId, userId, roleType) => {
   ).lean();
 
   try {
-    // ✅ Prepare and compile MJML email template
-    const template = templates.accountVerified
-      .replace(/{{firstName}}/g, updatedUser.firstName)
-      .replace(/{{mobNo}}/g, updatedUser.mobNo)
-      .replace(/{{roleType}}/g, roleType.toLowerCase())
-      .replace(/{{appName}}/g, process.env.APP_NAME);
-
-    const { html } = mjml(template, { minify: true });
-
-    // ✅ Send email
-    await sendEmail(
-      updatedUser.email,
-      "Your Account Has Been Verified Successfully",
-      html
-    );
-
+    const { email, firstName, mobNo } = updatedUser;
+    console.log("firstName: ", firstName);
+    if (email) {
+      const html = renderTemplate(templates.accountVerified, {
+        firstName,
+        mobNo,
+        roleType,
+      });
+      await sendEmail(email, "Your Account Has Been Verified", html);
+    }
     logger.info(`✅ Verification email sent to ${updatedUser.email}`);
   } catch (err) {
     logger.error("❌ Email send error:", err.message);

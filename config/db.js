@@ -5,6 +5,7 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGO_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      autoIndex: true,
     });
     // Run seeders on startup (optional)
     console.log(`MongoDB Connected: ${conn.connection.host}`);

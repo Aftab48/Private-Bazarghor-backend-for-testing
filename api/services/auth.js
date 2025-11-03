@@ -1,5 +1,7 @@
 const { Role } = require("../models/role");
 const User = require("../models/user");
+const Store = require("../models/storeModel");
+const { generateStoreCode } = require("../helpers/utils/genStoreCode");
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const messages = require("../helpers/utils/messages");
 const bcrypt = require("bcrypt");
@@ -24,7 +26,6 @@ const templates = require("../templates/emailTemplates.mjml");
 const createVendor = async (req) => {
   const {
     email,
-    // password,
     firstName,
     lastName,
     mobNo,
@@ -72,6 +73,13 @@ const createVendor = async (req) => {
     );
   }
 
+  let storeCode = generateStoreCode();
+  let existingStore = await Store.findOne({ storeCode });
+  while (existingStore) {
+    storeCode = generateStoreCode();
+    existingStore = await Store.findOne({ storeCode });
+  }
+
   const vendorData = {
     email,
     firstName,
@@ -79,18 +87,23 @@ const createVendor = async (req) => {
     mobNo,
     pinCode,
     gender,
-    // passwords: [{ pass: password }],
     roles: [{ roleId: vendorRole._id, code: vendorRole.code }],
     isActive: true,
     profileCompleted: 0,
     status: VENDOR_STATUS.PENDING,
     termsAndCondition: false,
-    cityNm: cityNm,
-    storeDetails: {
-      storeName: storeName,
-      storeAddress: storeAddress,
-      storePictures,
-    },
+    cityNm,
+  };
+
+  const storeData = {
+    vendorId: tempUser._id,
+    storeName,
+    storeAddress,
+    contactNumber: mobNo,
+    email,
+    storeCode,
+    storeStatus: VENDOR_STATUS.PENDING,
+    storePictures,
   };
 
   if (req.files?.profilePicture?.[0]) {
@@ -100,9 +113,16 @@ const createVendor = async (req) => {
   }
 
   try {
+    const store = await Store.create(storeData);
     const vendor = await User.findByIdAndUpdate(
       tempUser._id,
-      { $set: vendorData, $unset: { tempRegister: 1 } },
+      {
+        $set: {
+          ...vendorData,
+          storeDetails: store._id, //
+        },
+        $unset: { tempRegister: 1 },
+      },
       { new: true }
     );
 
@@ -115,6 +135,7 @@ const createVendor = async (req) => {
       success: true,
       data: {
         vendor,
+        store,
         token: tokenData.token,
         refreshToken: tokenData.refreshToken,
         validateTill: tokenData.validateTill,
@@ -277,13 +298,23 @@ const getVendor = async (userId) => {
 
   const user = await User.findById(userId)
     .select(
-      "-passwords -tokens -offNotification -canChangePass -updatedBy -consentAgree -isPrimaryAdmin -createdAt -updatedAt"
+      "firstName lastName mobNo profilePicture cityNm pinCode roles termsAndCondition isActive status storeDetails"
     )
+    .populate({
+      path: "storeDetails",
+      select:
+        "storeCode storeName storeAddress storePictures workingDays contactNumber category deliveryAvailable deliveryRadius minOrderValue rating storeStatus isApproved",
+    })
     .lean();
 
   if (!user) return { success: false, notFound: true };
 
-  return { success: true, data: user };
+  return {
+    success: true,
+    code: "SUCCESS",
+    message: "Vendor fetched successfully",
+    data: user,
+  };
 };
 
 const getDeliveryPartner = async (userId) => {
@@ -299,81 +330,108 @@ const getDeliveryPartner = async (userId) => {
 
   return { success: true, data: user };
 };
-
-const updateVendor = async (userId, body, files) => {
-  if (!userId) return { success: false, notFound: true };
-
-  const user = await User.findById(userId).lean();
-  if (!user) return { success: false, notFound: true };
-
-  const allowedFields = ["firstName", "lastName", "email", "dob", "gender"];
-  const update = {};
-
-  for (const key of allowedFields) {
-    if (
-      Object.prototype.hasOwnProperty.call(body, key) &&
-      body[key] !== undefined
-    ) {
-      update[key] = body[key];
-    }
-  }
-
-  const storeAllowed = ["storeName", "storeAddress"];
-  for (const key of storeAllowed) {
-    if (
-      Object.prototype.hasOwnProperty.call(body, key) &&
-      body[key] !== undefined
-    ) {
-      update.storeDetails = update.storeDetails || user.storeDetails || {};
-      update.storeDetails[key] = body[key];
-    }
-  }
-
-  // ✅ file uploads
-  if (files?.profilePicture?.[0]) {
-    update.profilePicture = FileService.generateFileObject(
-      files.profilePicture[0]
-    );
-  }
-
-  if (files?.storePictures?.length) {
-    const storePics = files.storePictures.map((f) =>
-      FileService.generateFileObject(f)
-    );
-    update.storeDetails = update.storeDetails || user.storeDetails || {};
-    update.storeDetails.storePictures = storePics;
-  }
-
-  if (Object.keys(update).length === 0) {
-    return { success: false, error: "No fields provided to update" };
-  }
-
+const updateVendor = async (vendorId, body, files) => {
   try {
-    const updated = await User.findByIdAndUpdate(
-      userId,
-      { $set: update },
-      { new: true }
-    ).lean();
+    if (!vendorId) return { success: false, error: "Vendor ID missing" };
 
-    const resp = { _id: updated._id };
+    const vendor = await User.findOne({
+      _id: vendorId,
+      "roles.code": ROLE.VENDOR,
+    }).lean();
 
-    // ✅ dynamic loop-based response
-    for (const k of Object.keys(update)) {
-      if (k === "storeDetails") {
-        resp.storeDetails = {};
-        for (const sd of Object.keys(update.storeDetails)) {
-          resp.storeDetails[sd] = updated.storeDetails?.[sd];
-        }
-      } else if (k === "profilePicture") {
-        resp.profilePicture = updated.profilePicture;
-      } else {
-        resp[k] = updated[k];
+    if (!vendor) return { success: false, error: "Vendor not found" };
+
+    // 🧩 User-side editable fields
+    const userFields = [
+      "firstName",
+      "lastName",
+      "email",
+      "mobNo",
+      "dob",
+      "gender",
+      "cityNm",
+      "pinCode",
+    ];
+
+    const userUpdate = {};
+    for (const key of userFields) {
+      if (body[key] !== undefined && body[key] !== null) {
+        userUpdate[key] = body[key];
       }
     }
 
-    return { success: true, data: resp };
+    // 📸 Profile Picture
+    if (files?.profilePicture?.[0]) {
+      userUpdate.profilePicture = FileService.generateFileObject(
+        files.profilePicture[0]
+      );
+    }
+
+    // ✳️ Apply update only if fields exist
+    let updatedUser = null;
+    if (Object.keys(userUpdate).length > 0) {
+      updatedUser = await User.findByIdAndUpdate(
+        vendorId,
+        { $set: userUpdate },
+        {
+          new: true,
+          select:
+            "firstName lastName email mobNo cityNm pinCode profilePicture gender dob",
+        }
+      ).lean();
+    }
+
+    const storeFields = [
+      "storeName",
+      "storeAddress",
+      "openingTime",
+      "closingTime",
+      "workingDays",
+      "description",
+      "category",
+    ];
+
+    const storeUpdate = {};
+    for (const key of storeFields) {
+      if (body[key] !== undefined && body[key] !== null) {
+        storeUpdate[key] = body[key];
+      }
+    }
+
+    if (files?.storePictures?.length) {
+      storeUpdate.storePictures = files.storePictures.map((f) =>
+        FileService.generateFileObject(f)
+      );
+    }
+
+    if (body.mobNo) storeUpdate.contactNumber = body.mobNo;
+    if (body.email) storeUpdate.email = body.email;
+
+    let updatedStore = null;
+    if (Object.keys(storeUpdate).length > 0) {
+      updatedStore = await Store.findOneAndUpdate(
+        { vendorId },
+        { $set: storeUpdate },
+        {
+          new: true,
+          select:
+            "storeName storeAddress openingTime closingTime workingDays contactNumber email description storePictures",
+        }
+      ).lean();
+    }
+
+    const response = {
+      _id: vendorId,
+      updatedUserFields: userUpdate,
+      updatedStoreFields: storeUpdate,
+    };
+
+    if (updatedUser) response.user = updatedUser;
+    if (updatedStore) response.store = updatedStore;
+
+    return { success: true, data: response };
   } catch (err) {
-    logger.error("Vendor update error:", err);
+    logger.error("Update vendor error:", err);
     return { success: false, error: err.message };
   }
 };

@@ -1,27 +1,28 @@
 const joi = require("joi");
-const { ROLE } = require("../../../../../config/constants/authConstant");
+const {
+  ROLE,
+  VENDOR_STATUS,
+} = require("../../../../../config/constants/authConstant");
 
 const createVendorByAdmin = joi.object({
-  firstName: joi
-    .string()
-    .min(2)
-    .max(50)
-    .required()
-    .error(
-      new Error("First name is required and must be between 2-50 characters")
-    ),
+  firstName: joi.string().min(2).max(50).required().messages({
+    "string.empty": "First name is required",
+    "string.min": "First name must be at least 2 characters",
+    "string.max": "First name cannot exceed 50 characters",
+  }),
 
-  lastName: joi
-    .string()
-    .allow("", null)
-    .max(50)
-    .error(new Error("Last name must be maximum 50 characters")),
+  lastName: joi.string().allow("", null).max(50).messages({
+    "string.max": "Last name cannot exceed 50 characters",
+  }),
 
   email: joi
     .string()
     .email({ tlds: { allow: false } })
     .required()
-    .error(new Error("Email must be a valid email address")),
+    .messages({
+      "string.email": "Email must be a valid email address",
+      "string.empty": "Email is required",
+    }),
 
   mobNo: joi
     .string()
@@ -32,49 +33,66 @@ const createVendorByAdmin = joi.object({
       "string.pattern.base": "Mobile number must be exactly 10 digits",
     }),
 
-  password: joi
-    .string()
-    .min(6)
-    .max(50)
-    .error(new Error("Password must be between 6-50 characters")),
+  password: joi.string().min(6).max(50).messages({
+    "string.empty": "Password is required",
+    "string.min": "Password must be at least 6 characters",
+    "string.max": "Password cannot exceed 50 characters",
+  }),
 
-  cityNm: joi
-    .string()
-    .optional()
-    .allow("", null)
-    .max(100)
-    .error(new Error("City name must be maximum 100 characters")),
+  cityNm: joi.string().allow("", null).max(100).messages({
+    "string.max": "City name cannot exceed 100 characters",
+  }),
 
   pinCode: joi
     .string()
     .regex(/^[0-9]{6}$/)
+    // .required()
     .messages({
       "string.empty": "Pincode is required",
       "string.pattern.base": "Pincode must be exactly 6 digits",
     }),
 
-  // Shop/Business Details
-  storeName: joi
-    .string()
-    .min(2)
-    .max(100)
-    .error(
-      new Error("Shop name is required and must be between 2-100 characters")
-    ),
-
-  storeAddress: joi
-    .string()
-    .min(1)
-    .max(500)
-    .error(
-      new Error(
-        "Shop address is required and must be between 10-500 characters"
-      )
-    ),
-  //   vehicleNo: joi.string().min(10).max(10).error(),
   roleType: joi.string().valid(ROLE.VENDOR).required().messages({
-    "any.only": "Role type must be one of: VENDOR",
+    "any.only": "Role type must be VENDOR",
     "any.required": "Role type is required",
+  }),
+
+  // 🏪 Store Info (admin also must provide store data)
+  storeDetails: joi.object({
+    storeCode: joi.string().optional().allow(null, ""),
+    storeName: joi.string().min(2).max(100).messages({
+      "string.empty": "Store name is required",
+      "string.min": "Store name must be at least 2 characters",
+      "string.max": "Store name cannot exceed 100 characters",
+    }),
+    storeAddress: joi.string().min(5).max(255).messages({
+      "string.empty": "Store address is required",
+      "string.min": "Store address must be at least 5 characters",
+      "string.max": "Store address cannot exceed 255 characters",
+    }),
+    contactNumber: joi
+      .string()
+      .pattern(/^[0-9]{10}$/)
+      .messages({
+        "string.pattern.base": "Contact number must be exactly 10 digits",
+      }),
+    email: joi
+      .string()
+      .email({ tlds: { allow: false } })
+      .messages({
+        "string.email": "Store email must be a valid email address",
+      }),
+    storePictures: joi
+      .array()
+      .items(
+        joi.object({
+          fileName: joi.string().allow(null, ""),
+          filePath: joi.string().allow(null, ""),
+          fileType: joi.string().allow(null, ""),
+        })
+      )
+      .default([]),
+    storeStatus: joi.string().default(VENDOR_STATUS.PENDING),
   }),
 });
 

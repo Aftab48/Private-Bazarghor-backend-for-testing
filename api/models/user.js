@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 // const { ACTIONS, JOB_TYPE } = require("../../config/constants/common");
 const bcrypt = require("bcrypt");
 const mongoosePaginate = require("mongoose-paginate-v2");
-var idValidator = require("mongoose-id-validator");
+// var idValidator = require("mongoose-id-validator");
 const _ = require("lodash");
 const { fileSchema } = require("../helpers/utils/commonSchema");
 
@@ -134,11 +134,7 @@ const schema = new Schema(
       },
     },
 
-    storeDetails: {
-      storeName: { type: String },
-      storeAddress: { type: String },
-      storePictures: { type: [fileSchema], default: [] },
-    },
+    storeDetails: { type: Schema.Types.ObjectId, ref: "store" },
     customerAddress: [
       {
         addressLine1: { type: String },
@@ -233,7 +229,7 @@ schema.pre("findOneAndUpdate", async function (next) {
 });
 
 schema.plugin(mongoosePaginate);
-schema.plugin(idValidator);
+// schema.plugin(idValidator);
 
 schema.methods.isPasswordMatch = async function (password) {
   const user = this;
