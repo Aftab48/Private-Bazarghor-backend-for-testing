@@ -134,7 +134,7 @@ const schema = new Schema(
       },
     },
 
-    storeDetails: { type: Schema.Types.ObjectId, ref: "store" },
+    storeDetails: { type: Schema.Types.ObjectId, ref: "Store" },
     customerAddress: [
       {
         addressLine1: { type: String },
