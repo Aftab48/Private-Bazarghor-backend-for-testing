@@ -49,6 +49,7 @@ const customerRoutes = require("./api/routes/customers/customerAuth.route");
 const adminRoutes = require("./api/routes/admin/adminAuth.Route");
 const addStaff = require("./api/routes/staff/staffManagement.routes");
 const addUsers = require("./api/routes/staff/userManegment.routes");
+const productRoutes = require("./api/routes/products/product.routes");
 
 // Use routes
 app.use("/api/vendors", vendorRoutes);
@@ -58,6 +59,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/staff", addStaff);
 app.use("/api/users", addUsers);
+app.use("/api/products", productRoutes);
 
 app.use(
   router.get(

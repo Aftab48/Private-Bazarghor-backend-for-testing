@@ -40,10 +40,17 @@ const uploadCustomerFiles = upload.fields([
 const uploadAdminProfile = upload.fields([
   { name: "profilePicture", maxCount: 1 },
 ]);
+
+// ✅ Middleware to handle product images (multiple images)
+const uploadProductImages = upload.fields([
+  { name: "productImages", maxCount: 4 },
+]);
+
 module.exports = {
   uploadVendorFiles,
   uploadDeliveryPartnerFiles,
   uploadCustomerFiles,
   uploadAdminProfile,
+  uploadProductImages,
   upload,
 };

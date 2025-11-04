@@ -19,6 +19,7 @@ const loginUser = joi
       .pattern(/^[0-9]{10}$/)
       .message("Mobile number must be 10 digits"),
     otp: joi.string().trim(),
+    deviceDetail: joi.string().trim().optional(),
   })
   .unknown(false);
 
