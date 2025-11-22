@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { ROLE } = require("../../../config/constants/authConstant");
 const VendorControllers = require("../../controllers/vendors/vendor.controller");
-const { logoutUser } = require("../../services/auth");
+const { logoutUser } = require("../../services/auth.service");
 const { authMiddleware } = require("../../middlewares/auth.middleware");
 const otp = require("../../services/otp.service");
 const validate = require("../../middlewares/validate");
@@ -12,6 +12,7 @@ const {
   uploadVendorFiles,
   upload,
 } = require("../../middlewares/upload.middleware");
+const vendorSubscriptionController = require("../../controllers/vendors/vendorSubscription.controller");
 
 router.post(
   "/create-vendor",
@@ -54,6 +55,6 @@ router.post(
   validate(validateVendors.loginUser),
   otp.verifyOTPAndLogin
 );
-router.post("/logout", authMiddleware([]), logoutUser);
 
+router.post("/logout", authMiddleware([]), logoutUser);
 module.exports = router;

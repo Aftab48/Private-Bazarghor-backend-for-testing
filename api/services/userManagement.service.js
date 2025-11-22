@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const { Role } = require("../models/role");
-const Store = require("../models/storeModel");
+const Store = require("../models/store");
+const VendorSubscription = require("../models/vendorSubscription");
 const { generateStoreCode } = require("../helpers/utils/genStoreCode");
 const {
   VENDOR_STATUS,
@@ -8,9 +9,11 @@ const {
   CUSTOMER_STATUS,
   ROLE,
 } = require("../../config/constants/authConstant");
-const { sendEmail, renderTemplate } = require("../services/send.email");
-const FileService = require("../services/file.service");
+const { renderTemplate, sendNotification } = require("./sendEmail.service");
+const FileService = require("./file.service");
 const templates = require("../templates/emailTemplates.mjml");
+const { assignFreeTrial } = require("./vendorSubscription.service");
+const mapplsService = require("./map-pls.service");
 
 const createVendorByAdmin = async (req, createdBy) => {
   try {
@@ -86,6 +89,21 @@ const createVendorByAdmin = async (req, createdBy) => {
       storeStatus: VENDOR_STATUS.PENDING,
     };
 
+    const resolvedLocation = await mapplsService
+      .resolveCoordinatesFromAddress({
+        address: storeAddress,
+        city: cityNm,
+        pincode: pinCode,
+      })
+      .catch(() => null);
+
+    if (resolvedLocation?.lat && resolvedLocation?.lng) {
+      storeData.location = {
+        lat: resolvedLocation.lat,
+        lng: resolvedLocation.lng,
+      };
+    }
+
     const store = await Store.create(storeData);
     vendor.storeDetails = store._id;
     await vendor.save();
@@ -95,7 +113,16 @@ const createVendorByAdmin = async (req, createdBy) => {
         firstName,
         mobNo,
       });
-      await sendEmail(email, "Your Vendor Account is Created", html);
+      // Send both email and WhatsApp notification
+      await sendNotification(
+        email,
+        mobNo,
+        "Your Vendor Account is Created",
+        html,
+        {
+          message: `Hello ${firstName}! Your vendor account has been created successfully. Welcome to BazarGhorr!`,
+        }
+      );
     }
 
     return {
@@ -239,6 +266,39 @@ const updateVendorByAdmin = async (id, body, files) => {
     if (body.mobNo) storeUpdate.contactNumber = body.mobNo;
     if (body.email) storeUpdate.email = body.email;
 
+    if (
+      body.location &&
+      (body.location.lat !== undefined || body.location.lng !== undefined)
+    ) {
+      const lat = Number(body.location.lat);
+      const lng = Number(body.location.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        storeUpdate.location = { lat, lng };
+      }
+    }
+
+    if (
+      storeUpdate.storeAddress &&
+      (!storeUpdate.location ||
+        storeUpdate.location.lat === undefined ||
+        storeUpdate.location.lng === undefined)
+    ) {
+      const resolvedLocation = await mapplsService
+        .resolveCoordinatesFromAddress({
+          address: storeUpdate.storeAddress,
+          city: body.cityNm || vendor.cityNm,
+          pincode: body.pinCode || vendor.pinCode,
+        })
+        .catch(() => null);
+
+      if (resolvedLocation?.lat && resolvedLocation?.lng) {
+        storeUpdate.location = {
+          lat: resolvedLocation.lat,
+          lng: resolvedLocation.lng,
+        };
+      }
+    }
+
     let updatedStore = null;
     if (Object.keys(storeUpdate).length > 0) {
       updatedStore = await Store.findOneAndUpdate(
@@ -247,7 +307,7 @@ const updateVendorByAdmin = async (id, body, files) => {
         {
           new: true,
           select:
-            "storeName storeAddress contactNumber email storePictures storeStatus",
+            "storeName storeAddress contactNumber email storePictures storeStatus location",
         }
       ).lean();
     }
@@ -352,7 +412,18 @@ const createDeliveryPartnerByAdmin = async (req, createdBy) => {
         appName: process.env.APP_NAME || "Grocery App",
       });
 
-      await sendEmail(email, "Your Delivery Partner Account Created", html);
+      // Send both email and WhatsApp notification
+      await sendNotification(
+        email,
+        mobNo,
+        "Your Delivery Partner Account Created",
+        html,
+        {
+          message: `Hello ${
+            deliveryPartner.firstName || "Delivery Partner"
+          }! Your delivery partner account has been created successfully. Welcome to BazarGhorr!`,
+        }
+      );
     }
 
     return { success: true, data: deliveryPartner };
@@ -609,7 +680,16 @@ const createCustomerByAdmin = async (req, createdBy) => {
         appName: process.env.APP_NAME || "Grocery App",
       });
 
-      await sendEmail(email, "Your Customer Account Created", html);
+      // Send both email and WhatsApp notification
+      await sendNotification(
+        email,
+        mobNo,
+        "Your Customer Account Created",
+        html,
+        {
+          message: `Hello ${firstName}! Your customer account has been created successfully. Welcome to BazarGhorr!`,
+        }
+      );
     }
 
     return { success: true, data: customer };
@@ -762,40 +842,53 @@ const verifyPendingStatus = async (adminId, userId, roleType) => {
     "roles.code": roleType,
   }).lean();
 
-  if (!user) return { success: false, error: "Vendor not found" };
+  if (!user) return { success: false, error: "User not found" };
 
   const admin = await User.findById(adminId).lean();
-  const allowedAdminRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN];
-  const isAdmin = admin?.roles?.some((r) => allowedAdminRoles.includes(r.code));
-  if (!isAdmin) {
+  const allowedAdminRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN];
+
+  if (!admin?.roles?.some((r) => allowedAdminRoles.includes(r.code))) {
     return { success: false, error: "Unauthorized access" };
   }
 
   const update = {};
+  const storeUpdate = {};
 
-  if (roleType === ROLE.VENDOR) {
-    if (user.status === VENDOR_STATUS.APPROVED) {
-      return { success: false, error: "Vendor already approved" };
-    }
-    update.status = VENDOR_STATUS.APPROVED;
+  const isCurrentlyApproved =
+    user.status === VENDOR_STATUS.APPROVED ||
+    user.status === DELIVERY_PARTNER_STATUS.APPROVED;
 
-    // ✅ Also update store status (if vendor has a store)
-    if (user.storeDetails) {
-      await Store.findByIdAndUpdate(user.storeDetails, {
-        $set: { storeStatus: VENDOR_STATUS.APPROVED },
-      });
-    }
+  if (isCurrentlyApproved) {
+    update.status =
+      roleType === ROLE.VENDOR
+        ? VENDOR_STATUS.PENDING
+        : DELIVERY_PARTNER_STATUS.PENDING;
+
+    update.verifiedBy = null;
+    update.verifiedAt = null;
+
+    storeUpdate.storeStatus = VENDOR_STATUS.PENDING;
+    storeUpdate.isApproved = false;
+  } else {
+    update.status =
+      roleType === ROLE.VENDOR
+        ? VENDOR_STATUS.APPROVED
+        : DELIVERY_PARTNER_STATUS.APPROVED;
+
+    update.verifiedBy = adminId;
+    update.verifiedAt = new Date();
+
+    storeUpdate.storeStatus = VENDOR_STATUS.APPROVED;
+    storeUpdate.isApproved = true;
   }
 
-  if (roleType === ROLE.DELIVERY_PARTNER) {
-    if (user.status === DELIVERY_PARTNER_STATUS.APPROVED) {
-      return { success: false, error: "Delivery Partner already approved" };
-    }
-    update.status = DELIVERY_PARTNER_STATUS.APPROVED;
+  if (roleType === ROLE.VENDOR && user.storeDetails) {
+    await Store.findByIdAndUpdate(
+      user.storeDetails,
+      { $set: storeUpdate },
+      { new: true }
+    );
   }
-
-  update.verifiedBy = adminId;
-  update.verifiedAt = new Date();
 
   const updatedUser = await User.findByIdAndUpdate(
     userId,
@@ -803,23 +896,59 @@ const verifyPendingStatus = async (adminId, userId, roleType) => {
     { new: true }
   ).lean();
 
-  try {
-    const { email, firstName, mobNo } = updatedUser;
-    console.log("firstName: ", firstName);
-    if (email) {
-      const html = renderTemplate(templates.accountVerified, {
-        firstName,
-        mobNo,
-        roleType,
+  if (!isCurrentlyApproved && roleType === ROLE.VENDOR) {
+    try {
+      const existingSub = await VendorSubscription.findOne({
+        vendorId: userId,
       });
-      await sendEmail(email, "Your Account Has Been Verified", html);
+
+      if (!existingSub) {
+        await assignFreeTrial(userId, user.storeDetails);
+        logger.info("🎉 Free Trial Assigned to new vendor!");
+      } else {
+        logger.info("⏭️ Vendor already has subscription. Free trial skipped.");
+      }
+    } catch (err) {
+      logger.error("❌ Free trial assignment error:", err.message);
     }
-    logger.info(`✅ Verification email sent to ${updatedUser.email}`);
-  } catch (err) {
-    logger.error("❌ Email send error:", err.message);
   }
 
-  return { success: true, data: updatedUser.status };
+  if (!isCurrentlyApproved) {
+    try {
+      const { email, firstName, mobNo } = updatedUser;
+
+      if (email) {
+        const html = renderTemplate(templates.accountVerified, {
+          firstName,
+          mobNo,
+          roleType,
+        });
+
+        await sendNotification(
+          email,
+          mobNo,
+          "Your Account Has Been Verified",
+          html,
+          {
+            message: `Hello ${firstName}! Your ${roleType} account has been verified successfully. Free trial activated!`,
+          }
+        );
+      }
+    } catch (err) {
+      logger.error("❌ Email send error:", err.message);
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      status: updatedUser.status,
+      isApproved: storeUpdate.isApproved ?? null,
+      message: isCurrentlyApproved
+        ? "Unapproved successfully (mail not sent)"
+        : "Approved successfully + Free Trial Assigned",
+    },
+  };
 };
 
 module.exports = {

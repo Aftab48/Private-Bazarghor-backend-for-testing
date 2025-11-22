@@ -3,6 +3,7 @@ const path = require("path");
 
 const UPLOAD_MODE = process.env.UPLOAD_MODE || "local";
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+const S3_REGION = process.env.S3_REGION;
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -11,6 +12,21 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 const FileService = {
   generateFileObject(file) {
     if (!file) return null;
+    if (file.s3Key && file.s3Bucket) {
+      return {
+        nm: path.basename(file.s3Key),
+        oriNm: file.originalname,
+        uri: `https://${file.s3Bucket}.s3.${
+          file.s3Region || S3_REGION
+        }.amazonaws.com/${file.s3Key}`,
+        mimeType: file.mimetype,
+        size: file.size,
+        sts: 2,
+        storage: "s3",
+        bucket: file.s3Bucket,
+        key: file.s3Key,
+      };
+    }
     return {
       nm: file.filename,
       oriNm: file.originalname,

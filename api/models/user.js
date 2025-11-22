@@ -1,9 +1,8 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-// const { ACTIONS, JOB_TYPE } = require("../../config/constants/common");
+const { PLANS } = require("../../config/constants/planConstant");
 const bcrypt = require("bcrypt");
 const mongoosePaginate = require("mongoose-paginate-v2");
-// var idValidator = require("mongoose-id-validator");
 const _ = require("lodash");
 const { fileSchema } = require("../helpers/utils/commonSchema");
 
@@ -26,7 +25,7 @@ const schema = new Schema(
   {
     firstName: { type: String }, // First name of the user.
     lastName: { type: String }, // Last name of the user.
-    mobNo: { type: String }, // Mobile No of User
+    mobNo: { type: String, unique: true, index: true, sparse: true }, // Mobile No of User
     email: { type: String, index: true }, // Name of User
     isActive: { type: Boolean, default: true, index: true }, //isActive
     mobVerify: {
@@ -135,6 +134,28 @@ const schema = new Schema(
     },
 
     storeDetails: { type: Schema.Types.ObjectId, ref: "Store" },
+    // platform subscription for customers (Smart Saver / Super Saver)
+    subscriptions: [
+      {
+        platformSubscription: {
+          type: Schema.Types.ObjectId,
+          ref: "vendorSubscription",
+        },
+        subscriptionPlan: {
+          type: String,
+          enum: [PLANS.BASIC, PLANS.STANDARD, PLANS.PREMIUM],
+        },
+        subscriptionExpiresAt: { type: Date },
+      },
+    ],
+
+    // simple wallet balance in INR (for cashback/refunds)
+    walletBalance: { type: Number, default: 0 },
+    // referral tracking fields
+    referralCode: { type: String, unique: true, sparse: true },
+    referredBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    referralCount: { type: Number, default: 0 },
+    referralCredits: { type: Number, default: 0 },
     customerAddress: [
       {
         addressLine1: { type: String },
@@ -156,7 +177,18 @@ const schema = new Schema(
     consentAgree: { type: Boolean, default: false },
     isPrimaryAdmin: { type: Boolean, default: false },
     tempRegistration: { type: Boolean, default: false },
+
+    deliveryPartner: {
+      isAvailable: { type: Boolean, default: true },
+      lastLocation: {
+        lat: Number,
+        lng: Number,
+      },
+      rating: { type: Number, default: 5 },
+      totalDeliveries: { type: Number, default: 0 },
+    },
   },
+
   {
     timestamps: true,
   }

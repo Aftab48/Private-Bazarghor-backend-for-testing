@@ -1,6 +1,6 @@
 const { Role } = require("../models/role");
 const User = require("../models/user");
-const Store = require("../models/storeModel");
+const Store = require("../models/store");
 const { generateStoreCode } = require("../helpers/utils/genStoreCode");
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const messages = require("../helpers/utils/messages");
@@ -11,17 +11,19 @@ const {
   DELIVERY_PARTNER_STATUS,
   CUSTOMER_STATUS,
 } = require("../../config/constants/authConstant");
-const FileService = require("../services/file.service");
+const FileService = require("./file.service");
 const {
   generateToken,
   verifyToken,
   removeToken,
 } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
-const { generateOTP } = require("../helpers/utils/comman");
+const { generateOtp } = require("../helpers/utils/comman");
 const moment = require("moment-timezone");
-const { sendEmail, renderTemplate } = require("../services/send.email");
+const { renderTemplate, sendNotification } = require("./sendEmail.service");
 const templates = require("../templates/emailTemplates.mjml");
+const { PERMISSIONS } = require("../../config/constants/permissionConstant");
+const { Role: RoleModel } = require("../models/role"); // explicit alias
 
 const createVendor = async (req) => {
   const {
@@ -119,7 +121,7 @@ const createVendor = async (req) => {
       {
         $set: {
           ...vendorData,
-          storeDetails: store._id, //
+          storeDetails: store._id,
         },
         $unset: { tempRegister: 1 },
       },
@@ -143,7 +145,6 @@ const createVendor = async (req) => {
     };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
-    logger.error("Vendor creation error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -151,7 +152,6 @@ const createVendor = async (req) => {
 const createDeliveryPartner = async (req) => {
   const {
     email,
-    // password,
     firstName,
     lastName,
     mobNo,
@@ -202,7 +202,10 @@ const createDeliveryPartner = async (req) => {
     }
     if (!driverLicenseNo) {
       FileService.deleteUploadedFiles(req.files);
-      return { success: false, error: "License number is required for bike" };
+      return {
+        success: false,
+        error: "License number is required for bike",
+      };
     }
   }
 
@@ -213,7 +216,6 @@ const createDeliveryPartner = async (req) => {
     vehiclePictures: {},
   };
 
-  // ✅ Handle vehicle pictures (front/back)
   if (req.files?.vehicleFront?.[0]) {
     vehicleDetails.vehiclePictures.front = FileService.generateFileObject(
       req.files.vehicleFront[0]
@@ -225,7 +227,6 @@ const createDeliveryPartner = async (req) => {
     );
   }
 
-  // ✅ Profile picture
   let profilePicture;
   if (req.files?.profilePicture?.[0]) {
     profilePicture = FileService.generateFileObject(
@@ -233,7 +234,6 @@ const createDeliveryPartner = async (req) => {
     );
   }
 
-  // ✅ Build user data
   const partnerData = {
     email,
     firstName,
@@ -241,7 +241,6 @@ const createDeliveryPartner = async (req) => {
     mobNo,
     dob,
     gender,
-    // passwords: [{ pass: password }],
     roles: [{ roleId: deliveryRole._id, code: deliveryRole.code }],
     isActive: true,
     profileCompleted: 0,
@@ -288,7 +287,6 @@ const createDeliveryPartner = async (req) => {
     };
   } catch (err) {
     FileService.deleteUploadedFiles(req.files);
-    logger.error("Delivery Partner creation error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -298,12 +296,12 @@ const getVendor = async (userId) => {
 
   const user = await User.findById(userId)
     .select(
-      "firstName lastName mobNo profilePicture cityNm pinCode roles termsAndCondition isActive status storeDetails"
+      "firstName lastName email mobNo profilePicture cityNm pinCode roles termsAndCondition isActive status storeDetails"
     )
     .populate({
       path: "storeDetails",
       select:
-        "storeCode storeName storeAddress storePictures workingDays contactNumber category deliveryAvailable deliveryRadius minOrderValue rating storeStatus isApproved",
+        "_id storeCode storeName storeAddress storePictures workingDays contactNumber category deliveryAvailable deliveryRadius minOrderValue rating storeStatus isApproved",
     })
     .lean();
 
@@ -341,7 +339,6 @@ const updateVendor = async (vendorId, body, files) => {
 
     if (!vendor) return { success: false, error: "Vendor not found" };
 
-    // 🧩 User-side editable fields
     const userFields = [
       "firstName",
       "lastName",
@@ -360,14 +357,12 @@ const updateVendor = async (vendorId, body, files) => {
       }
     }
 
-    // 📸 Profile Picture
     if (files?.profilePicture?.[0]) {
       userUpdate.profilePicture = FileService.generateFileObject(
         files.profilePicture[0]
       );
     }
 
-    // ✳️ Apply update only if fields exist
     let updatedUser = null;
     if (Object.keys(userUpdate).length > 0) {
       updatedUser = await User.findByIdAndUpdate(
@@ -431,7 +426,6 @@ const updateVendor = async (vendorId, body, files) => {
 
     return { success: true, data: response };
   } catch (err) {
-    logger.error("Update vendor error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -491,7 +485,6 @@ const updateDeliveryPartner = async (userId, body, files) => {
       return { success: false, error: "License number required for bike" };
   }
 
-  // ✅ files
   if (files?.profilePicture?.[0]) {
     update.profilePicture = FileService.generateFileObject(
       files.profilePicture[0]
@@ -550,19 +543,18 @@ const updateDeliveryPartner = async (userId, body, files) => {
     }
     return { success: true, data: resp };
   } catch (err) {
-    logger.error("Delivery Partner update error:", err);
     return { success: false, error: err.message };
   }
 };
 
 const createCustomer = async (body, headers) => {
   try {
-    const { fullName, mobNo } = body;
+    const { firstName, lastName, mobNo } = body;
 
-    if (!fullName || !mobNo) {
+    if (!firstName || !mobNo) {
       return {
         success: false,
-        error: "Full name and mobile number are required",
+        error: "First name, last name, and mobile number are required",
       };
     }
 
@@ -601,23 +593,19 @@ const createCustomer = async (body, headers) => {
         ],
       };
     }
-
     const customerRole = await Role.findOne({ code: ROLE.CUSTOMER }).lean();
     if (!customerRole?._id) {
       return { success: false, error: "Customer role not found in system" };
     }
 
-    const nameParts = fullName.trim().split(" ");
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(" ") || "";
-
+    let profileCompleted = 20;
     const customerData = {
       firstName,
       lastName,
       mobNo,
       roles: [{ roleId: customerRole._id, code: customerRole.code }],
       isActive: true,
-      profileCompleted: 20,
+      profileCompleted,
       status: CUSTOMER_STATUS.APPROVED,
       termsAndCondition: true,
       customerAddress: [],
@@ -645,7 +633,6 @@ const createCustomer = async (body, headers) => {
           mobNo: customer.mobNo,
           roles: customer.roles,
           profileCompleted: customer.profileCompleted,
-          email: customer.email,
           dob: customer.dob,
           gender: customer.gender,
           customerAddress: customer.customerAddress,
@@ -656,7 +643,6 @@ const createCustomer = async (body, headers) => {
       },
     };
   } catch (err) {
-    logger.error("Customer creation error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -740,7 +726,6 @@ const updateCustomer = async (userId, body, files) => {
     }).lean();
     return { success: true, data: resp };
   } catch (err) {
-    logger.error("Customer update error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -752,16 +737,16 @@ const addCustomerAddress = async (userId, body) => {
     addressLine2,
     city,
     state,
-    pincode,
+    pinCode,
     landmark,
     addressType,
     isDefault,
   } = body;
 
-  if (!addressLine1 || !city || !state || !pincode) {
+  if (!addressLine1 || !city || !state || !pinCode) {
     return {
       success: false,
-      error: "Address line 1, city, state, and pincode are required",
+      error: "Address line 1, city, state, and pinCode are required",
     };
   }
 
@@ -773,7 +758,7 @@ const addCustomerAddress = async (userId, body) => {
     addressLine2: addressLine2 || "",
     city,
     state,
-    pincode,
+    pinCode,
     landmark: landmark || "",
     addressType: addressType || "home",
     isDefault: isDefault || false,
@@ -785,7 +770,6 @@ const addCustomerAddress = async (userId, body) => {
       isDefault: false,
     }));
     updatedAddresses.push(newAddress);
-
     await User.findByIdAndUpdate(userId, { customerAddress: updatedAddresses });
   } else {
     await User.findByIdAndUpdate(userId, {
@@ -793,7 +777,11 @@ const addCustomerAddress = async (userId, body) => {
     });
   }
 
-  return { success: true, data: newAddress };
+  const updatedUser = await User.findById(userId).lean();
+  const savedAddress =
+    updatedUser.customerAddress[updatedUser.customerAddress.length - 1];
+
+  return { success: true, data: savedAddress };
 };
 
 const updateCustomerAddress = async (userId, addressId, body) => {
@@ -860,7 +848,6 @@ const adminLoginService = async (email, password, userAgent) => {
       };
     }
 
-    // find user
     const user = await User.findOne({ email, isActive: true }).lean();
     if (!user)
       return {
@@ -869,13 +856,8 @@ const adminLoginService = async (email, password, userAgent) => {
         error: "User not found or inactive",
       };
 
-    // allowed admin roles
     const allowedRoles = [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.SUB_ADMIN];
-
-    // extract user roles
     const userRoleCodes = (user.roles || []).map((r) => r.code);
-
-    // check if any role is allowed
     const matchedRoleCode = userRoleCodes.find((code) =>
       allowedRoles.includes(code)
     );
@@ -887,7 +869,6 @@ const adminLoginService = async (email, password, userAgent) => {
         error: "Access denied — not an admin account",
       };
 
-    // validate password
     const isPasswordMatched = await User.prototype.isPasswordMatch.call(
       user,
       password
@@ -895,8 +876,7 @@ const adminLoginService = async (email, password, userAgent) => {
     if (!isPasswordMatched)
       return { success: false, forbidden: true, error: "Incorrect password" };
 
-    // find full role info from DB (for completeness)
-    const roleDoc = await Role.findOne({ code: matchedRoleCode }).lean();
+    const roleDoc = await RoleModel.findOne({ code: matchedRoleCode }).lean();
     if (!roleDoc?._id)
       return {
         success: false,
@@ -904,7 +884,6 @@ const adminLoginService = async (email, password, userAgent) => {
         error: "Role not found in system",
       };
 
-    // generate token
     const tokenData = await generateToken(user, userAgent || "Unknown Device");
 
     const data = {
@@ -917,11 +896,11 @@ const adminLoginService = async (email, password, userAgent) => {
       refreshToken: tokenData.refreshToken,
       validateTill: tokenData.validateTill,
       isPrimaryAdmin: matchedRoleCode === ROLE.SUPER_ADMIN,
+      permissions: roleDoc.permissions || [],
     };
 
     return { success: true, data };
   } catch (error) {
-    logger.error("Admin login error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -1029,7 +1008,6 @@ const updateAdmin = async (targetUserId, body, files, currentUser) => {
 
     return { success: true, data: resp };
   } catch (err) {
-    logger.error("Admin update error:", err);
     FileService.deleteUploadedFiles(files);
     return { success: false, error: err.message };
   }
@@ -1060,7 +1038,6 @@ const setNewPassword = async (id, newPassword, User) => {
 
     return true;
   } catch (error) {
-    logger.error("❌ Error in setNewPassword:", error);
     throw error;
   }
 };
@@ -1081,11 +1058,14 @@ const forgotPassword = async (email) => {
         error: "User account is deactivated",
       };
 
-    const OTP = generateOTP();
+    const OTP = generateOtp();
     const expireTime = moment().add(1, "hour").format("YYYY-MM-DD HH:mm:ss");
 
     await User.findByIdAndUpdate(user._id, {
-      resetPassword: { code: OTP, expireTime },
+      resetPassword: {
+        code: OTP,
+        expireTime: formatDate(expireTime),
+      },
     });
 
     const html = renderTemplate(templates.passwordResetOTP, {
@@ -1093,14 +1073,25 @@ const forgotPassword = async (email) => {
       OTP,
     });
 
-    await sendEmail(user.email, "Password Reset Request", html);
+    await sendNotification(
+      user.email,
+      user.mobNo,
+      "Password Reset Request",
+      html,
+      {
+        templateName:
+          process.env.WHATSAPP_PASSWORD_RESET_TEMPLATE || "hello_world",
+        languageCode: "en_US",
+        templateParams: {},
+        message: `Hello ${user.firstName}! Your password reset OTP is: ${OTP}. This OTP will expire in 1 hour.`,
+      }
+    );
 
     return {
       success: true,
       data: { message: "Reset password OTP sent successfully" },
     };
   } catch (error) {
-    logger.error("Forgot password error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -1115,7 +1106,7 @@ const resetPassword = async (email, otp, newPassword) => {
     if (!code || code !== otp)
       return { success: false, forbidden: true, error: "Invalid OTP" };
 
-    if (moment().isAfter(moment(expireTime)))
+    if (moment().isAfter(moment(formatDate(expireTime))))
       return { success: false, forbidden: true, error: "OTP expired" };
 
     const result = await setNewPassword(user._id, newPassword, User);
@@ -1123,9 +1114,11 @@ const resetPassword = async (email, otp, newPassword) => {
 
     await User.findByIdAndUpdate(user._id, { $unset: { resetPassword: "" } });
 
-    return { success: true, data: { message: "Password reset successfully" } };
+    return {
+      success: true,
+      data: { message: "Password reset successfully" },
+    };
   } catch (error) {
-    logger.error("Reset password error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -1159,7 +1152,6 @@ const changePassword = async (userId, oldPassword, newPassword) => {
       data: { message: "Password changed successfully" },
     };
   } catch (error) {
-    logger.error("Change admin password error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -1182,6 +1174,17 @@ const logoutUser = catchAsync(async (req, res) => {
   );
 });
 
+const getAggregatedPermissions = async (userId) => {
+  if (!userId) return [];
+  const user = await User.findById(userId).lean();
+  if (!user) return [];
+  const roleCodes = (user.roles || []).map((r) => r.code);
+  const roles = await RoleModel.find({ code: { $in: roleCodes } })
+    .select("permissions")
+    .lean();
+  return Array.from(new Set(roles.flatMap((r) => r.permissions || [])));
+};
+
 module.exports = {
   createVendor,
   createDeliveryPartner,
@@ -1203,4 +1206,5 @@ module.exports = {
   setNewPassword,
   getAdmins,
   updateAdmin,
+  getAggregatedPermissions,
 };

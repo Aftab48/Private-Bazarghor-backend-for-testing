@@ -1,0 +1,9 @@
+const CART_CONSTANTS = {
+  ACTIVE: "ACTIVE",
+  CHECKED_OUT: "CHECKED_OUT",
+  CANCELLED: "CANCELLED",
+};
+
+module.exports = {
+  CART_CONSTANTS,
+};

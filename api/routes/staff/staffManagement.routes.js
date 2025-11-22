@@ -9,14 +9,16 @@ const {
   adminLogin,
   getAdminsController,
 } = require("../../controllers/admin/admin.controller");
-const { logoutUser } = require("../../services/auth");
+const { logoutUser } = require("../../services/auth.service");
 const {
   changePasswords,
 } = require("../../helpers/utils/validations/auth/changePassword");
 const {
   checkSuperAdmin,
   authMiddleware,
+  permissionMiddleware,
 } = require("../../middlewares/auth.middleware");
+const { PERMISSIONS } = require("../../../config/constants/permissionConstant");
 const {
   uploadAdminProfile,
   upload,
@@ -26,6 +28,10 @@ router.post(
   "/add-admin",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
+  permissionMiddleware(
+    [PERMISSIONS.CREATE_ADMIN, PERMISSIONS.CREATE_SUB_ADMIN],
+    { any: true }
+  ),
   validate(adminValidate.createAdminsValidation),
   uploadAdminProfile,
   addStaff.createAdminController
@@ -35,6 +41,10 @@ router.put(
   "/update-admin/:id",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
+  permissionMiddleware(
+    [PERMISSIONS.UPDATE_ADMIN, PERMISSIONS.UPDATE_SUB_ADMIN],
+    { any: true }
+  ),
   validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
   adminControllers.updateAdminController
@@ -44,6 +54,7 @@ router.get(
   "/get-all-admin",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
+  permissionMiddleware([PERMISSIONS.VIEW_ADMINS]),
   addStaff.getAllAdminsController
 );
 
@@ -51,6 +62,7 @@ router.get(
   "/get-adminById/:id",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
+  permissionMiddleware([PERMISSIONS.VIEW_ADMINS]),
   addStaff.getAdminByIdController
 );
 
@@ -58,6 +70,10 @@ router.delete(
   "/delete-admin/:id",
   authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
   checkSuperAdmin,
+  permissionMiddleware(
+    [PERMISSIONS.DELETE_ADMIN, PERMISSIONS.DELETE_SUB_ADMIN],
+    { any: true }
+  ),
   addStaff.deleteAdminController
 );
 
@@ -73,18 +89,21 @@ router.post("/logout", authMiddleware([]), logoutUser);
 router.get(
   "/get-admin-profile",
   authMiddleware([ROLE.ADMIN]),
+  permissionMiddleware([PERMISSIONS.VIEW_ADMINS]),
   getAdminsController
 );
 
 router.get(
   "/get-sub-admin-profile",
   authMiddleware([ROLE.SUB_ADMIN]),
+  permissionMiddleware([PERMISSIONS.VIEW_ADMINS]),
   adminControllers.getAdminsController
 );
 
 router.put(
   "/update-admin",
   authMiddleware([ROLE.ADMIN]),
+  permissionMiddleware([PERMISSIONS.UPDATE_ADMIN]),
   validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
   addStaff.updateSelfAdminController
@@ -93,9 +112,28 @@ router.put(
 router.put(
   "/update-sub-admin",
   authMiddleware([ROLE.SUB_ADMIN]),
+  permissionMiddleware([PERMISSIONS.UPDATE_SUB_ADMIN]),
   validate(adminValidate.updateAdminsValidation),
   uploadAdminProfile,
   addStaff.updateSelfAdminController
+);
+
+router.post(
+  "/admin-change-password/:id",
+  authMiddleware([ROLE.ADMIN]),
+  permissionMiddleware([PERMISSIONS.UPDATE_ADMIN]),
+  validate(changePasswords),
+  upload.none(),
+  adminControllers.changeAdminPassword
+);
+
+router.post(
+  "/sub-admin-change-password/:id",
+  authMiddleware([ROLE.SUB_ADMIN]),
+  permissionMiddleware([PERMISSIONS.UPDATE_SUB_ADMIN]),
+  validate(changePasswords),
+  upload.none(),
+  adminControllers.changeAdminPassword
 );
 
 router.post(
@@ -109,22 +147,6 @@ router.post(
   validate(adminValidate.resetPasswordCode),
   upload.none(),
   adminControllers.resetPasswordController
-);
-
-router.post(
-  "/admin-change-password/:id",
-  authMiddleware([ROLE.ADMIN]),
-  validate(changePasswords),
-  upload.none(),
-  adminControllers.changeAdminPassword
-);
-
-router.post(
-  "/sub-admin-change-password/:id",
-  authMiddleware([ROLE.SUB_ADMIN]),
-  validate(changePasswords),
-  upload.none(),
-  adminControllers.changeAdminPassword
 );
 
 module.exports = router;

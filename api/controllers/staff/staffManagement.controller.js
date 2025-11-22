@@ -1,4 +1,4 @@
-const adminServices = require("../../services/staff");
+const adminServices = require("../../services/staff.service");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
 const messages = require("../../helpers/utils/messages");
 

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { ROLE } = require("../../../config/constants/authConstant");
 const productControllers = require("../../controllers/products/product.controller");
+const adminProducts = require("../../controllers/admin/product.controller");
 const { authMiddleware } = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate");
 const productValidations = require("../../helpers/utils/validations/products/index");
@@ -10,52 +11,82 @@ const {
   upload,
 } = require("../../middlewares/upload.middleware");
 
-// Create Product (Vendor only)
 router.post(
-  "/create",
+  "/add-product",
   authMiddleware([ROLE.VENDOR]),
   validate(productValidations.createProduct),
   uploadProductImages,
   productControllers.createProductController
 );
 
-// Get Categories and Subcategories (Public endpoint - must be before /:id)
 router.get(
   "/categories/list",
   upload.none(),
   productControllers.getCategoriesController
 );
 
-// Get Products (with filters and pagination)
 router.get(
-  "/",
-  authMiddleware([ROLE.VENDOR, ROLE.ADMIN, ROLE.SUPER_ADMIN, ROLE.CUSTOMER]),
+  "/get-products-list",
+  authMiddleware([ROLE.VENDOR]),
   validate(productValidations.getProducts),
   productControllers.getProductsController
 );
 
-// Get Product By ID
 router.get(
-  "/:id",
-  authMiddleware([ROLE.VENDOR, ROLE.ADMIN, ROLE.SUPER_ADMIN, ROLE.CUSTOMER]),
+  "/get-productsById/:id",
+  authMiddleware([ROLE.VENDOR]),
   productControllers.getProductByIdController
 );
 
-// Update Product (Vendor only)
 router.put(
-  "/:id",
+  "/update-productsById/:id",
   authMiddleware([ROLE.VENDOR]),
   validate(productValidations.updateProduct),
   uploadProductImages,
   productControllers.updateProductController
 );
 
-// Delete Product (Vendor only - Soft Delete)
 router.delete(
-  "/:id",
+  "/delete-products/:id",
   authMiddleware([ROLE.VENDOR]),
   productControllers.deleteProductController
 );
 
-module.exports = router;
+// ✅ Routes only for Super Admin & Admin
+router.post(
+  "/admin/add-product",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
+  validate(productValidations.createProductByAdmin),
+  uploadProductImages,
+  adminProducts.createProductByAdminController
+);
 
+router.get(
+  "/admin/get-products-list",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
+  validate(productValidations.getProductsByAdmin),
+  adminProducts.getProductsByAdminController
+);
+
+router.get(
+  "/admin/get-product/:id",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
+  validate(productValidations.getProductByIdByAdmin),
+  adminProducts.getProductByIdByAdminController
+);
+
+router.put(
+  "/admin/update-product/:id",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
+  validate(productValidations.updateProductByAdmin),
+  uploadProductImages,
+  adminProducts.updateProductByAdminController
+);
+
+router.delete(
+  "/admin/delete-product/:id",
+  authMiddleware([ROLE.SUPER_ADMIN, ROLE.ADMIN]),
+  adminProducts.deleteProductByAdminController
+);
+
+module.exports = router;

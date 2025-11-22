@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const { fileSchema } = require("../helpers/utils/commonSchema");
 const mongoosePaginate = require("mongoose-paginate-v2");
-const { PRODUCT_STATUS, CATEGORIES_LIST, SUBCATEGORIES_LIST } = require("../../config/constants/productConstant");
+const {
+  PRODUCT_STATUS,
+  CATEGORIES_LIST,
+  SUBCATEGORIES_LIST,
+} = require("../../config/constants/productConstant");
 const { generateSlug, generateUniqueSlug } = require("../helpers/utils/slug");
 
 const myCustomLabels = {
@@ -108,11 +112,9 @@ const schema = new Schema(
 // Generate and update slug when productName changes
 schema.pre("save", async function (next) {
   try {
-    // Generate slug if productName is modified or slug doesn't exist
     if (this.isModified("productName") || !this.slug) {
       const baseSlug = generateSlug(this.productName);
-      
-      // Check if slug exists (excluding current document for updates)
+
       const checkExists = async (slug, excludeId) => {
         const query = { slug, deletedAt: null };
         if (excludeId) {
@@ -121,11 +123,10 @@ schema.pre("save", async function (next) {
         const existing = await mongoose.model("Product").findOne(query);
         return !!existing;
       };
-      
+
       this.slug = await generateUniqueSlug(baseSlug, checkExists, this._id);
     }
-    
-    // Update status based on quantity
+
     if (this.isModified("quantity")) {
       if (this.quantity === 0) {
         this.status = PRODUCT_STATUS.OUT_OF_STOCK;
@@ -149,4 +150,3 @@ schema.plugin(mongoosePaginate);
 const Product = mongoose.model("Product", schema);
 
 module.exports = Product;
-

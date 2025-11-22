@@ -1,19 +1,11 @@
 const messages = require("../../helpers/utils/messages");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
 const { formatDate } = require("../../helpers/utils/date");
-const {
-  createCustomer,
-  getCustomer,
-  updateCustomer,
-  addCustomerAddress,
-  updateCustomerAddress,
-  deleteCustomerAddress,
-} = require("../../services/auth");
+const customers = require("../../services/auth.service");
 const { verifyOTPAndLogin } = require("../../services/otp.service");
 
-// Register customer
 const registerCustomer = catchAsync(async (req, res) => {
-  const result = await createCustomer(req.body, req.headers);
+  const result = await customers.createCustomer(req.body, req.headers);
 
   if (result?.success) {
     return messages.successResponse(
@@ -26,15 +18,13 @@ const registerCustomer = catchAsync(async (req, res) => {
   }
 });
 
-// Login customer
 const loginCustomer = catchAsync(async (req, res) => {
   return await verifyOTPAndLogin(req, res);
 });
 
-// Get profile
 const getCustomerProfile = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await getCustomer(userId);
+  const result = await customers.getCustomer(userId);
 
   if (result?.notFound) {
     return messages.recordNotFound(res, "Customer not found");
@@ -64,10 +54,9 @@ const getCustomerProfile = catchAsync(async (req, res) => {
   );
 });
 
-// Update profile
 const updateCustomerProfile = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await updateCustomer(userId, req.body, req.files);
+  const result = await customers.updateCustomer(userId, req.body, req.files);
 
   if (result?.success) {
     return messages.successResponse(
@@ -82,10 +71,9 @@ const updateCustomerProfile = catchAsync(async (req, res) => {
   }
 });
 
-// Add address
 const addAddressController = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await addCustomerAddress(userId, req.body);
+  const result = await customers.addCustomerAddress(userId, req.body);
 
   if (result?.success) {
     return messages.successResponse(
@@ -100,11 +88,14 @@ const addAddressController = catchAsync(async (req, res) => {
   }
 });
 
-// Update address
 const updateAddressController = catchAsync(async (req, res) => {
   const userId = req.user;
   const { addressId } = req.params;
-  const result = await updateCustomerAddress(userId, addressId, req.body);
+  const result = await customers.updateCustomerAddress(
+    userId,
+    addressId,
+    req.body
+  );
 
   if (result?.success) {
     return messages.successResponse(
@@ -126,7 +117,7 @@ const updateAddressController = catchAsync(async (req, res) => {
 const deleteAddressController = catchAsync(async (req, res) => {
   const userId = req.user;
   const { addressId } = req.params;
-  const result = await deleteCustomerAddress(userId, addressId);
+  const result = await customers.deleteCustomerAddress(userId, addressId);
 
   if (result?.success) {
     return messages.successResponse({}, res, "Address deleted successfully");

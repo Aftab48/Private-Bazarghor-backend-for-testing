@@ -1,4 +1,5 @@
 const util = require("../helpers/utils/messages");
+const logger = require("../helpers/utils/logger");
 
 const validate = (validator) => {
   return async function (req, res, next) {

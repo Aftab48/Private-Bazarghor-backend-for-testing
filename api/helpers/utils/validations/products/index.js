@@ -3,6 +3,10 @@ const {
   updateProduct,
   getProducts,
   getProductById,
+  createProductByAdmin,
+  updateProductByAdmin,
+  getProductsByAdmin,
+  getProductByIdByAdmin,
 } = require("./product");
 
 module.exports = {
@@ -10,5 +14,8 @@ module.exports = {
   updateProduct,
   getProducts,
   getProductById,
+  createProductByAdmin,
+  updateProductByAdmin,
+  getProductsByAdmin,
+  getProductByIdByAdmin,
 };
-

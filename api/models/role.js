@@ -43,6 +43,11 @@ const schema = mongoose.Schema(
       type: Date,
       index: true,
     },
+    permissions: {
+      type: [String],
+      default: [],
+      index: true,
+    },
   },
   {
     timestamps: true,

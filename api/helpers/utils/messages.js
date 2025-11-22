@@ -295,3 +295,12 @@ exports.resetPasswordOtpSend = (res, message, data) => {
     data: data,
   });
 };
+
+exports.rolePermissionsUpdatedResponse = (data, res, message) => {
+  if (message) res.message = message;
+  return res.status(responseStatusCode.success).json({
+    code: RESPONSE_CODE.DEFAULT,
+    message: res.message,
+    data,
+  });
+};

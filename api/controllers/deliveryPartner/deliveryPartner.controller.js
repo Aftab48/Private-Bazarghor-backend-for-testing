@@ -1,13 +1,9 @@
 const messages = require("../../helpers/utils/messages");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
-const {
-  createDeliveryPartner,
-  getDeliveryPartner,
-  updateDeliveryPartner,
-} = require("../../services/auth");
+const deliverPartner = require("../../services/auth.service");
 
 const registerDeliveryPartnerController = catchAsync(async (req, res) => {
-  const result = await createDeliveryPartner(req, res);
+  const result = await deliverPartner.createDeliveryPartner(req, res);
 
   if (result?.success) {
     return messages.successResponse(
@@ -20,10 +16,9 @@ const registerDeliveryPartnerController = catchAsync(async (req, res) => {
   }
 });
 
-// GET DELIVERY PARTNER PROFILE
 const getDeliveryPartnerController = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await getDeliveryPartner(userId);
+  const result = await deliverPartner.getDeliveryPartner(userId);
 
   if (result?.notFound) {
     return messages.notFound("User not found", res);
@@ -38,7 +33,11 @@ const getDeliveryPartnerController = catchAsync(async (req, res) => {
 // UPDATE DELIVERY PARTNER
 const updateDeliveryPartnerController = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await updateDeliveryPartner(userId, req.body, req.files);
+  const result = await deliverPartner.updateDeliveryPartner(
+    userId,
+    req.body,
+    req.files
+  );
 
   if (result?.success) {
     return messages.successResponse(

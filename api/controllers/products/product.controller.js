@@ -1,16 +1,9 @@
-const {
-  createProduct,
-  getProducts,
-  getProductById,
-  updateProduct,
-  deleteProduct,
-  getCategories,
-} = require("../../services/product.service");
+const productService = require("../../services/product.service");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
 const messages = require("../../helpers/utils/messages");
 
 const createProductController = catchAsync(async (req, res) => {
-  const result = await createProduct(req);
+  const result = await productService.createProduct(req);
   if (result?.success) {
     return messages.successResponse(
       result.data,
@@ -26,7 +19,7 @@ const createProductController = catchAsync(async (req, res) => {
 });
 
 const getProductsController = catchAsync(async (req, res) => {
-  const result = await getProducts(req);
+  const result = await productService.getProducts(req);
   if (result?.success) {
     return messages.successResponse(
       result.data,
@@ -42,7 +35,7 @@ const getProductsController = catchAsync(async (req, res) => {
 });
 
 const getProductByIdController = catchAsync(async (req, res) => {
-  const result = await getProductById(req);
+  const result = await productService.getProductById(req);
   if (result?.notFound) {
     return messages.notFound("Product not found", res);
   }
@@ -61,7 +54,7 @@ const getProductByIdController = catchAsync(async (req, res) => {
 });
 
 const updateProductController = catchAsync(async (req, res) => {
-  const result = await updateProduct(req);
+  const result = await productService.updateProduct(req);
   if (result?.notFound) {
     return messages.notFound("Product not found", res);
   }
@@ -80,7 +73,7 @@ const updateProductController = catchAsync(async (req, res) => {
 });
 
 const deleteProductController = catchAsync(async (req, res) => {
-  const result = await deleteProduct(req);
+  const result = await productService.deleteProduct(req);
   if (result?.notFound) {
     return messages.notFound("Product not found", res);
   }
@@ -99,7 +92,7 @@ const deleteProductController = catchAsync(async (req, res) => {
 });
 
 const getCategoriesController = catchAsync(async (req, res) => {
-  const result = await getCategories();
+  const result = await productService.getCategories();
   if (result?.success) {
     return messages.successResponse(
       result.data,
@@ -122,4 +115,3 @@ module.exports = {
   deleteProductController,
   getCategoriesController,
 };
-

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const validate = require("../../middlewares/validate");
-const { logoutUser } = require("../../services/auth");
+const { logoutUser } = require("../../services/auth.service");
 const { ROLE } = require("../../../config/constants/authConstant");
 const { authMiddleware } = require("../../middlewares/auth.middleware");
 const otp = require("../../services/otp.service");

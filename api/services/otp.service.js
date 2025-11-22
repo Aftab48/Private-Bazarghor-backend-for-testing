@@ -1,17 +1,16 @@
 const User = require("../models/user");
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const messages = require("../helpers/utils/messages");
-const logger = require("../helpers/utils/logger");
 const { generateToken } = require("../helpers/utils/jwt");
 const { formatDate } = require("../helpers/utils/date");
+const { generateOtp } = require("../helpers/utils/comman");
+const { sendOtpSms } = require("./twilio.service");
 const {
   OTP_EXPIRY_TIME,
   VENDOR_STATUS,
   ROLE,
   DELIVERY_PARTNER_STATUS,
 } = require("../../config/constants/authConstant");
-
-const HARDCODED_OTP = "123456";
 
 const sendOTP = catchAsync(async (req, res) => {
   const { mobNo } = req.body;
@@ -21,7 +20,6 @@ const sendOTP = catchAsync(async (req, res) => {
   }
 
   let user = await User.findOne({ mobNo }).lean();
-
   if (user?.isActive === false) {
     return messages.forbidden(
       "Your account is deactivated. Please contact support.",
@@ -32,40 +30,59 @@ const sendOTP = catchAsync(async (req, res) => {
   const expireDate = new Date();
   expireDate.setMinutes(expireDate.getMinutes() + OTP_EXPIRY_TIME.MINUTE);
   const expireTime = formatDate(expireDate);
+  const otp = generateOtp(user?.mobVerify?.code);
 
   if (!user) {
     user = await User.create({
       mobNo,
       tempRegister: true,
-      mobVerify: { code: HARDCODED_OTP, expireTime },
+      mobVerify: { code: otp, expireTime },
     });
 
-    logger.info(`Registration OTP sent to ${mobNo}: ${HARDCODED_OTP}`);
+    console.log(`OTP sent to ${mobNo}: ${otp}`);
+
+    try {
+      await sendOtpSms(mobNo, otp);
+    } catch (err) {
+      logger.error(`Failed to send registration OTP to ${mobNo}`, err);
+      return messages.internalServerError(
+        res,
+        "Failed to send OTP. Please try again."
+      );
+    }
+
+    const payload = {
+      message: "OTP sent for registration",
+      expireTime,
+      otp, //for testing purposes
+    };
+    if (process.env.NODE_ENV !== "Development") payload.otp = otp;
 
     return messages.successResponse(
-      {
-        message: "OTP sent for registration",
-        otp: HARDCODED_OTP,
-        expireTime,
-      },
+      payload,
       res,
       "OTP sent to your mobile number"
     );
   }
 
-  // If user exists -> treat as login
   await User.findByIdAndUpdate(user._id, {
-    mobVerify: { code: HARDCODED_OTP, expireTime },
+    mobVerify: { code: otp, expireTime: formatDate(expireTime) },
   });
 
-  logger.info(`Login OTP sent to ${mobNo}: ${HARDCODED_OTP}`);
+  console.log(`OTP sent to ${mobNo}: ${otp}`);
+
+  try {
+    await sendOtpSms(mobNo, otp);
+  } catch (err) {
+    logger.error(`Failed to send login OTP to ${mobNo}`, err);
+    return messages.internalServerError(
+      res,
+      "Failed to send OTP. Please try again."
+    );
+  }
 
   return messages.verificationOTP(
-    {
-      message: "OTP sent for login",
-      otp: HARDCODED_OTP,
-      expireTime,
-    },
+    { message: "OTP sent for login", otp, expireTime: formatDate(expireTime) },
     res,
     "OTP sent to your mobile number"
   );
@@ -211,14 +228,25 @@ const resendOTP = catchAsync(async (req, res) => {
   expireDate.setMinutes(expireDate.getMinutes() + OTP_EXPIRY_TIME.MINUTE);
   const expireTime = formatDate(expireDate);
 
+  const otp = generateOtp(user?.mobVerify?.code);
   await User.findByIdAndUpdate(user._id, {
-    mobVerify: { code: HARDCODED_OTP, expireTime },
+    mobVerify: { code: otp, expireTime },
   });
 
-  logger.info(`OTP resent to ${mobNo}: ${HARDCODED_OTP}`);
+  console.log(`OTP resent to ${mobNo}: ${otp}`);
+
+  try {
+    await sendOtpSms(mobNo, otp);
+  } catch (err) {
+    logger.error(`Failed to resend OTP to ${mobNo}`, err);
+    return messages.internalServerError(
+      res,
+      "Failed to resend OTP. Please try again."
+    );
+  }
 
   return messages.verificationOTP(
-    { message: "OTP resent successfully", otp: HARDCODED_OTP, expireTime },
+    { message: "OTP resent successfully" },
     res,
     "OTP resent successfully"
   );

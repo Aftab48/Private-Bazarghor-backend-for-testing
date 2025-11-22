@@ -2,12 +2,15 @@ const {
   RESPONSE_CODE,
 } = require("../../../config/constants/responseCodeConstant");
 const responseCode = require("../utils/responseCode");
+const logger = require("./logger");
+
 const catchAsync = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((err) => {
-    console.error("❌ Error caught in catchAsync:");
-    console.error("Message:", err.message);
-    console.error("Stack:", err.stack);
-    console.error("Full error:", err);
+    logger.error("❌ Error caught in catchAsync:", {
+      message: err.message,
+      stack: err.stack,
+      error: err,
+    });
     res.status(responseCode?.internalServerError).json({
       code: RESPONSE_CODE.ERROR,
       message: err.message,

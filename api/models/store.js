@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const { fileSchema } = require("../helpers/utils/commonSchema");
 const mongoosePaginate = require("mongoose-paginate-v2");
-// var idValidator = require("mongoose-id-validator");
+const { PLANS } = require("../../config/constants/planConstant");
 
 const schema = new Schema(
   {
@@ -12,6 +12,12 @@ const schema = new Schema(
       required: true,
       index: true,
     },
+    products: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
 
     storeCode: {
       type: String,
@@ -22,9 +28,27 @@ const schema = new Schema(
     storeName: { type: String },
     storeAddress: { type: String },
     storePictures: { type: [fileSchema], default: [] },
+    // geo location for delivery distance calculations
+    location: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
 
-    openingTime: { type: String },
-    closingTime: { type: String },
+    // subscription plan for the vendor: Basic | Standard | Premium
+    subscriptions: [
+      {
+        subscriptionPlan: {
+          type: String,
+          enum: [PLANS.BASIC, PLANS.STANDARD, PLANS.PREMIUM],
+        },
+        subscriptionExpiresAt: { type: Date },
+        subscriptionId: {
+          type: Schema.Types.ObjectId,
+          ref: "VendorSubscription",
+        },
+        commissionPercent: { type: Number },
+      },
+    ],
     workingDays: {
       type: [String],
       default: [
@@ -37,18 +61,27 @@ const schema = new Schema(
         "Sunday",
       ],
     },
+    updatedBy: [
+      {
+        type: Schema.Types.ObjectId,
+      },
+    ],
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+    },
     contactNumber: { type: String },
     email: { type: String },
     description: { type: String },
 
     category: { type: String, default: "Grocery" },
     deliveryAvailable: { type: Boolean, default: true },
-    deliveryRadius: { type: Number, default: 5 },
+    deliveryRadius: { type: Number, default: 15 },
     minOrderValue: { type: Number, default: 0 },
     rating: { type: Number, default: 0 },
 
     isApproved: { type: Boolean, default: false },
     storeStatus: { type: Number },
+    isStoreOpen: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -69,7 +102,6 @@ schema.pre("save", async function (next) {
 });
 
 schema.plugin(mongoosePaginate);
-// schema.plugin(idValidator);
 
 const store = mongoose.model("Store", schema, "stores");
 module.exports = store;

@@ -63,4 +63,10 @@ const formatDate = (dateInput, opts = {}) => {
   return result;
 };
 
-module.exports = { formatDate };
+const addDays = (date, days) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result; // returns JS Date object
+};
+
+module.exports = { formatDate, addDays };

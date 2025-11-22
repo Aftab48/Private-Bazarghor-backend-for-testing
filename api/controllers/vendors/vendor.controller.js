@@ -1,13 +1,9 @@
-const {
-  createVendor,
-  getVendor,
-  updateVendor,
-} = require("../../services/auth");
+const vendors = require("../../services/auth.service");
 const { catchAsync } = require("../../helpers/utils/catchAsync");
 const messages = require("../../helpers/utils/messages");
 
 const createVendorController = catchAsync(async (req, res) => {
-  const result = await createVendor(req, res);
+  const result = await vendors.createVendor(req, res);
   if (result?.success) {
     return messages.successResponse(
       result.data,
@@ -24,7 +20,7 @@ const createVendorController = catchAsync(async (req, res) => {
 
 const VendorController = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await getVendor(userId);
+  const result = await vendors.getVendor(userId);
 
   if (result?.notFound) {
     return messages.notFound("User not found", res);
@@ -38,7 +34,7 @@ const VendorController = catchAsync(async (req, res) => {
 
 const updateVendorController = catchAsync(async (req, res) => {
   const userId = req.user;
-  const result = await updateVendor(userId, req.body, req.files);
+  const result = await vendors.updateVendor(userId, req.body, req.files);
 
   if (result?.success) {
     return messages.successResponse(

@@ -1,22 +1,26 @@
 const Product = require("../models/product");
-const Store = require("../models/storeModel");
+const Store = require("../models/store");
 const User = require("../models/user");
 const FileService = require("./file.service");
-const { catchAsync } = require("../helpers/utils/catchAsync");
-const messages = require("../helpers/utils/messages");
 const logger = require("../helpers/utils/logger");
 const { PRODUCT_STATUS } = require("../../config/constants/productConstant");
 const mongoose = require("mongoose");
 
-// Helper function to build query condition for ID or slug
 const buildProductQuery = (id) => {
   const isObjectId = mongoose.Types.ObjectId.isValid(id) && id.length === 24;
   return isObjectId ? { _id: id } : { slug: id };
 };
 
-// Create Product
 const createProduct = async (req) => {
-  const { productName, productDescription, quantity, price, category, subcategory, storeId } = req.body;
+  const {
+    productName,
+    productDescription,
+    quantity,
+    price,
+    category,
+    subcategory,
+    storeId,
+  } = req.body;
   const userId = req.user;
 
   if (!userId) {
@@ -24,14 +28,30 @@ const createProduct = async (req) => {
     return { success: false, error: "User not authenticated" };
   }
 
-  // Verify store belongs to vendor
-  const store = await Store.findOne({ _id: storeId, vendorId: userId, deletedAt: null });
+  let selectedStoreId = storeId;
+  if (!selectedStoreId) {
+    const user = await User.findById(userId).lean();
+    selectedStoreId = user?.storeDetails || null;
+  }
+
+  if (!selectedStoreId) {
+    FileService.deleteUploadedFiles(req.files);
+    return {
+      success: false,
+      error: "Store not provided and vendor has no store",
+    };
+  }
+
+  const store = await Store.findOne({
+    _id: selectedStoreId,
+    vendorId: userId,
+    deletedAt: null,
+  });
   if (!store) {
     FileService.deleteUploadedFiles(req.files);
     return { success: false, error: "Store not found or access denied" };
   }
 
-  // Handle product images
   const productImages = [];
   if (req.files?.productImages?.length) {
     req.files.productImages.forEach((f) => {
@@ -39,7 +59,6 @@ const createProduct = async (req) => {
     });
   }
 
-  // Determine status based on quantity
   let status = PRODUCT_STATUS.IN_STOCK;
   if (quantity === 0) {
     status = PRODUCT_STATUS.OUT_OF_STOCK;
@@ -49,7 +68,7 @@ const createProduct = async (req) => {
 
   const productData = {
     vendorId: userId,
-    storeId: storeId,
+    storeId: selectedStoreId,
     productName,
     productDescription: productDescription || "",
     productImages,
@@ -64,6 +83,9 @@ const createProduct = async (req) => {
 
   try {
     const product = await Product.create(productData);
+    await Store.findByIdAndUpdate(selectedStoreId, {
+      $push: { products: product._id },
+    });
     return {
       success: true,
       data: product,
@@ -75,7 +97,6 @@ const createProduct = async (req) => {
   }
 };
 
-// Get Products (with pagination and filters)
 const getProducts = async (req) => {
   const userId = req.user;
   const {
@@ -92,12 +113,10 @@ const getProducts = async (req) => {
     deletedAt: null,
   };
 
-  // If vendor, only show their products
   if (userId) {
     query.vendorId = userId;
   }
 
-  // Apply filters
   if (storeId) {
     query.storeId = storeId;
   }
@@ -111,7 +130,6 @@ const getProducts = async (req) => {
     query.status = status;
   }
 
-  // Text search
   if (search) {
     query.$or = [
       { productName: { $regex: search, $options: "i" } },
@@ -142,7 +160,52 @@ const getProducts = async (req) => {
   }
 };
 
-// Get Product By ID or Slug
+const getProductsForStore = async (req) => {
+  const {
+    page = 1,
+    limit = 10,
+    category,
+    subcategory,
+    status,
+    search,
+  } = req.query;
+  const { storeId } = req.params;
+
+  if (!storeId) return { success: false, error: "storeId required" };
+
+  const query = { deletedAt: null, storeId };
+
+  if (category) query.category = category;
+  if (subcategory) query.subcategory = subcategory;
+  if (status) query.status = status;
+
+  if (search) {
+    query.$or = [
+      { productName: { $regex: search, $options: "i" } },
+      { productDescription: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  try {
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate: [
+        { path: "vendorId", select: "firstName lastName" },
+        { path: "storeId", select: "storeName storeCode" },
+      ],
+      lean: true,
+    };
+
+    const products = await Product.paginate(query, options);
+    return { success: true, data: products };
+  } catch (err) {
+    logger.error("Get products for store error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
 const getProductById = async (req) => {
   const { id } = req.params;
   const userId = req.user;
@@ -152,7 +215,6 @@ const getProductById = async (req) => {
     deletedAt: null,
   };
 
-  // If vendor, ensure they own the product
   if (userId) {
     query.vendorId = userId;
   }
@@ -178,18 +240,24 @@ const getProductById = async (req) => {
   }
 };
 
-// Update Product
 const updateProduct = async (req) => {
   const { id } = req.params;
   const userId = req.user;
-  const { productName, productDescription, quantity, price, category, subcategory, status } = req.body;
+  const {
+    productName,
+    productDescription,
+    quantity,
+    price,
+    category,
+    subcategory,
+    status,
+  } = req.body;
 
   if (!userId) {
     FileService.deleteUploadedFiles(req.files);
     return { success: false, error: "User not authenticated" };
   }
 
-  // Find product and verify ownership
   const product = await Product.findOne({
     ...buildProductQuery(id),
     vendorId: userId,
@@ -201,21 +269,21 @@ const updateProduct = async (req) => {
     return { success: false, notFound: true };
   }
 
-  // Handle product images update
   let productImages = product.productImages || [];
   if (req.files?.productImages?.length) {
-    // Delete old images if needed (optional - you can keep them or remove)
-    const newImages = req.files.productImages.map((f) => FileService.generateFileObject(f));
+    const newImages = req.files.productImages.map((f) =>
+      FileService.generateFileObject(f)
+    );
     productImages = [...productImages, ...newImages];
   }
 
-  // Build update object
   const updateData = {
     updatedBy: userId,
   };
 
   if (productName !== undefined) updateData.productName = productName;
-  if (productDescription !== undefined) updateData.productDescription = productDescription;
+  if (productDescription !== undefined)
+    updateData.productDescription = productDescription;
   if (quantity !== undefined) updateData.quantity = quantity;
   if (price !== undefined) updateData.price = price;
   if (category !== undefined) updateData.category = category;
@@ -223,7 +291,6 @@ const updateProduct = async (req) => {
   if (status !== undefined) updateData.status = status;
   if (productImages.length > 0) updateData.productImages = productImages;
 
-  // Auto-update status based on quantity if quantity is being updated
   if (quantity !== undefined) {
     if (quantity === 0) {
       updateData.status = PRODUCT_STATUS.OUT_OF_STOCK;
@@ -258,7 +325,6 @@ const updateProduct = async (req) => {
   }
 };
 
-// Delete Product (Soft Delete)
 const deleteProduct = async (req) => {
   const { id } = req.params;
   const userId = req.user;
@@ -288,6 +354,19 @@ const deleteProduct = async (req) => {
       { new: true }
     );
 
+    try {
+      if (deletedProduct?.storeId) {
+        await Store.findByIdAndUpdate(deletedProduct.storeId, {
+          $pull: { products: deletedProduct._id },
+        });
+      }
+    } catch (e) {
+      logger.error(
+        "Product delete: failed to remove product from store.products",
+        e
+      );
+    }
+
     return {
       success: true,
       data: deletedProduct,
@@ -298,10 +377,12 @@ const deleteProduct = async (req) => {
   }
 };
 
-// Get Categories and Subcategories
 const getCategories = async () => {
-  const { PRODUCT_CATEGORIES, PRODUCT_SUBCATEGORIES } = require("../../config/constants/productConstant");
-  
+  const {
+    PRODUCT_CATEGORIES,
+    PRODUCT_SUBCATEGORIES,
+  } = require("../../config/constants/productConstant");
+
   return {
     success: true,
     data: {
@@ -311,6 +392,253 @@ const getCategories = async () => {
   };
 };
 
+const createProductByAdmin = async (req) => {
+  const {
+    vendorId,
+    storeId,
+    productName,
+    productDescription,
+    quantity,
+    price,
+    category,
+    subcategory,
+  } = req.body;
+
+  if (!vendorId || !storeId) {
+    FileService.deleteUploadedFiles(req.files);
+    return { success: false, error: "vendorId and storeId are required" };
+  }
+
+  const store = await Store.findOne({ _id: storeId, deletedAt: null });
+  if (!store) {
+    FileService.deleteUploadedFiles(req.files);
+    return { success: false, error: "Store not found" };
+  }
+
+  const productImages = [];
+  if (req.files?.productImages?.length) {
+    req.files.productImages.forEach((f) =>
+      productImages.push(FileService.generateFileObject(f))
+    );
+  }
+
+  let status = PRODUCT_STATUS.IN_STOCK;
+  if (quantity === 0) status = PRODUCT_STATUS.OUT_OF_STOCK;
+  else if (quantity < 10) status = PRODUCT_STATUS.LOW_STOCK;
+
+  const productData = {
+    vendorId,
+    storeId,
+    productName,
+    productDescription: productDescription || "",
+    productImages,
+    quantity,
+    price,
+    category,
+    subcategory: subcategory || null,
+    status,
+    isActive: true,
+    createdBy: req.admin,
+  };
+
+  try {
+    const product = await Product.create(productData);
+    await Store.findByIdAndUpdate(storeId, {
+      $push: { products: product._id },
+    });
+    return { success: true, data: product };
+  } catch (err) {
+    FileService.deleteUploadedFiles(req.files);
+    logger.error("Admin: Product creation error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+const getProductsByAdmin = async (req) => {
+  const {
+    page = 1,
+    limit = 10,
+    category,
+    subcategory,
+    status,
+    search,
+    vendorId,
+    storeId,
+  } = req.query;
+
+  const query = { deletedAt: null };
+
+  if (vendorId) query.vendorId = vendorId;
+  if (storeId) query.storeId = storeId;
+  if (category) query.category = category;
+  if (subcategory) query.subcategory = subcategory;
+  if (status) query.status = status;
+
+  if (search) {
+    query.$or = [
+      { productName: { $regex: search, $options: "i" } },
+      { productDescription: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  try {
+    const products = await Product.paginate(query, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate: [
+        { path: "vendorId", select: "firstName lastName email mobNo" },
+        { path: "storeId", select: "storeName storeCode" },
+        { path: "createdBy", select: "firstName lastName" },
+      ],
+    });
+
+    return { success: true, data: products };
+  } catch (err) {
+    logger.error("Admin: Get products error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+const getProductByIdByAdmin = async (req) => {
+  const { id } = req.params;
+
+  const query = {
+    ...buildProductQuery(id),
+    deletedAt: null,
+  };
+
+  try {
+    const product = await Product.findOne(query)
+      .populate("vendorId", "firstName lastName email mobNo")
+      .populate("storeId", "storeName storeCode")
+      .populate("createdBy updatedBy", "firstName lastName");
+
+    if (!product) return { success: false, notFound: true };
+
+    return { success: true, data: product };
+  } catch (err) {
+    logger.error("Admin: Get product by ID error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+const updateProductByAdmin = async (req) => {
+  const { id } = req.params;
+  const {
+    productName,
+    productDescription,
+    quantity,
+    price,
+    category,
+    subcategory,
+    status,
+    vendorId,
+    storeId,
+  } = req.body;
+
+  let product = await Product.findOne({
+    ...buildProductQuery(id),
+    deletedAt: null,
+  });
+
+  if (!product) {
+    FileService.deleteUploadedFiles(req.files);
+    return { success: false, notFound: true };
+  }
+
+  let productImages = product.productImages || [];
+
+  if (req.files?.productImages?.length) {
+    const newImages = req.files.productImages.map((f) =>
+      FileService.generateFileObject(f)
+    );
+    productImages = [...productImages, ...newImages];
+  }
+
+  const updateData = {
+    updatedBy: req.admin,
+    productImages,
+  };
+
+  if (vendorId) updateData.vendorId = vendorId;
+  if (storeId) updateData.storeId = storeId;
+  if (productName !== undefined) updateData.productName = productName;
+  if (productDescription !== undefined)
+    updateData.productDescription = productDescription;
+  if (category !== undefined) updateData.category = category;
+  if (subcategory !== undefined) updateData.subcategory = subcategory || null;
+  if (price !== undefined) updateData.price = price;
+
+  if (quantity !== undefined) {
+    updateData.quantity = quantity;
+
+    if (quantity === 0) updateData.status = PRODUCT_STATUS.OUT_OF_STOCK;
+    else if (quantity < 10) updateData.status = PRODUCT_STATUS.LOW_STOCK;
+    else updateData.status = PRODUCT_STATUS.IN_STOCK;
+  }
+
+  if (status !== undefined) updateData.status = status;
+
+  try {
+    const updatedProduct = await Product.findOneAndUpdate(
+      { ...buildProductQuery(id) },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    // If admin changed storeId, move product reference from old store to new store
+    try {
+      const oldStoreId = product.storeId && product.storeId.toString();
+      const newStoreId = updateData.storeId && updateData.storeId.toString();
+      if (newStoreId && oldStoreId && newStoreId !== oldStoreId) {
+        await Store.findByIdAndUpdate(oldStoreId, {
+          $pull: { products: updatedProduct._id },
+        });
+        await Store.findByIdAndUpdate(newStoreId, {
+          $push: { products: updatedProduct._id },
+        });
+      }
+    } catch (storeErr) {
+      logger.error("Admin: moving product between stores failed:", storeErr);
+    }
+
+    return { success: true, data: updatedProduct };
+  } catch (err) {
+    FileService.deleteUploadedFiles(req.files);
+    logger.error("Admin: Update product error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+const deleteProductByAdmin = async (req) => {
+  const { id } = req.params;
+
+  const product = await Product.findOne({
+    ...buildProductQuery(id),
+    deletedAt: null,
+  });
+
+  if (!product) return { success: false, notFound: true };
+
+  try {
+    const deletedProduct = await Product.findOneAndUpdate(
+      { ...buildProductQuery(id) },
+      {
+        deletedAt: new Date(),
+        isActive: false,
+        deletedBy: req.admin,
+      },
+      { new: true }
+    );
+
+    return { success: true, data: deletedProduct };
+  } catch (err) {
+    logger.error("Admin: Delete product error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
 module.exports = {
   createProduct,
   getProducts,
@@ -318,5 +646,11 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getCategories,
+  getProductsForStore,
+  // ✅ Admin services
+  createProductByAdmin,
+  getProductsByAdmin,
+  getProductByIdByAdmin,
+  updateProductByAdmin,
+  deleteProductByAdmin,
 };
-

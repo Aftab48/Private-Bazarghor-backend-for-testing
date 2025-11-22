@@ -7,26 +7,66 @@ const emailTemplates = {
       <mj-head>
         <mj-preview>${title}</mj-preview>
         <mj-attributes>
-          <mj-text font-family="Inter, Arial, sans-serif" color="#333" line-height="1.6" />
+          <mj-text font-family="Helvetica, Arial, sans-serif" color="#333333" line-height="1.2" />
           <mj-section padding="0px" />
           <mj-column padding="0px" />
-          <mj-divider border-color="#eaeaea" border-width="1px" />
         </mj-attributes>
+        <mj-style>
+          .verification-code {
+            background-color: #f0f0f0;
+            padding: 16px 24px;
+            border-radius: 6px;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            color: #2c3e50;
+            text-align: center;
+            margin: 20px 0;
+          }
+        </mj-style>
       </mj-head>
-      <mj-body background-color="#f5f6f7">
-        <mj-section background-color="#ffffff" border-radius="10px" padding="32px 24px">
+      <mj-body background-color="#f5f5f5">
+        <!-- Top Spacer -->
+        <mj-section background-color="#f5f5f5" padding="32px 0 0 0">
+          <mj-column></mj-column>
+        </mj-section>
+
+        <!-- Logo Header -->
+        <mj-section background-color="#ffffff" padding="32px 24px 24px 24px" border-radius="8px 8px 0 0">
           <mj-column>
-            <mj-text align="center" font-size="22px" color="#000" font-weight="bold" padding-bottom="12px">
+            <mj-image 
+              src="https://i.postimg.cc/Cx6VKMjd/Frame-1984083188.png" 
+              alt="BazarGhorr" 
+              width="120px" 
+              align="center"
+              padding="0"
+            />
+          </mj-column>
+        </mj-section>
+
+        <!-- Divider -->
+        <mj-section background-color="#ffffff" padding="0 24px">
+          <mj-column>
+            <mj-divider border-color="#e0e0e0" border-width="1px" padding="0" />
+          </mj-column>
+        </mj-section>
+
+        <!-- Main Content -->
+        <mj-section background-color="#ffffff" padding="32px 24px 48px 24px" border-radius="0 0 8px 8px">
+          <mj-column>
+            <mj-text font-size="24px" color="#000000" font-weight="bold" padding-bottom="20px">
               ${title}
             </mj-text>
             ${content}
           </mj-column>
         </mj-section>
 
-        <mj-section padding-top="16px">
+        <!-- Footer -->
+        <mj-section padding="24px 0 32px 0">
           <mj-column>
-            <mj-text font-size="13px" color="#7f8c8d" align="center">
-              ©️ ${new Date().getFullYear()} BazarGhorr. All rights reserved.
+            <mj-text font-size="12px" color="#888888" align="center" line-height="1.5">
+              BazarGhorr,India<br/>
+              © ${new Date().getFullYear()} BazarGhorr. All rights reserved.
             </mj-text>
           </mj-column>
         </mj-section>
@@ -40,21 +80,24 @@ const emailTemplates = {
   accountVerified: ({ firstName, roleType, mobNo }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text font-size="16px" color="#333">
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
         Hello ${firstName},
       </mj-text>
-      <mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
         Your <strong>${roleType}</strong> account has been verified successfully.
       </mj-text>
-      <mj-text>
-        You can now log in using your registered mobile number: <strong>${mobNo}</strong>.
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Your account <strong>FREE TRIAL</strong> has been activated for 15 days.
       </mj-text>
-      <mj-divider border-color="#eaeaea" />
-      <mj-text font-size="14px" color="#555">
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        You can now log in using your registered mobile number: <strong>${mobNo}</strong>
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
         Thank you,<br/><strong>Team BazarGhorr</strong>
       </mj-text>
     `,
-      "Account Verified ✅"
+      "Congrats! Your Account is Verified ✅"
     ),
 
   /**
@@ -63,14 +106,21 @@ const emailTemplates = {
   vendorCreated: ({ firstName, mobNo }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text>
-        Hello ${firstName}, your vendor account has been successfully created.
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Hello ${firstName},
       </mj-text>
-      <mj-text><strong>Mobile No:</strong> ${mobNo}</mj-text>
-      <mj-divider border-color="#eaeaea" />
-      <mj-text font-size="14px" color="#555">
-        You can now log in using your registered mobile number.<br/>
-        <strong>Team BazarGhorr</strong>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Your vendor account has been successfully created.
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        <strong>Mobile Number:</strong> ${mobNo}
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        You can now log in using your registered mobile number.
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
+        Welcome aboard!<br/><strong>Team BazarGhorr</strong>
       </mj-text>
     `,
       "Welcome to BazarGhorr 🎉"
@@ -82,18 +132,24 @@ const emailTemplates = {
   deliveryPartnerCreated: ({ firstName, mobNo, dob }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text>Hello ${firstName},</mj-text>
-      <mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Hello ${firstName},
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
         Your delivery partner account has been created successfully.
       </mj-text>
-      <mj-text>
-        <strong>Mobile No:</strong> ${mobNo}<br/>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="8px">
+        <strong>Mobile Number:</strong> ${mobNo}
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
         <strong>Date of Birth:</strong> ${dob}
       </mj-text>
-      <mj-divider border-color="#eaeaea" />
-      <mj-text font-size="14px" color="#555">
-        You can now log in using your registered mobile number.<br/>
-        <strong>Team BazarGhorr</strong>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        You can now log in using your registered mobile number.
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
+        Welcome to the team!<br/><strong>Team BazarGhorr</strong>
       </mj-text>
     `,
       "Welcome to BazarGhorr 🚀"
@@ -105,14 +161,21 @@ const emailTemplates = {
   customerCreated: ({ firstName, mobNo, appName = "Team BazarGhorr" }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text>
-        Hello ${firstName}, your customer account has been created successfully.
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Hello ${firstName},
       </mj-text>
-      <mj-text><strong>Mobile No:</strong> ${mobNo}</mj-text>
-      <mj-divider border-color="#eaeaea" />
-      <mj-text font-size="14px" color="#555">
-        You can log in anytime using your registered mobile number.<br/>
-        <strong>${appName}</strong>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Your customer account has been created successfully.
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        <strong>Mobile Number:</strong> ${mobNo}
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        You can log in anytime using your registered mobile number.
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
+        Happy shopping!<br/><strong>${appName}</strong>
       </mj-text>
     `,
       "Welcome to BazarGhorr 💚"
@@ -124,17 +187,27 @@ const emailTemplates = {
   passwordResetOTP: ({ firstName, OTP }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text>Hello ${firstName},</mj-text>
-      <mj-text>Your password reset OTP is:</mj-text>
-      <mj-text font-size="28px" font-weight="bold" color="#e74c3c">
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Hello ${firstName},
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        You requested to reset your password. Enter the following verification code to reset your password:
+      </mj-text>
+      <mj-text css-class="verification-code">
         ${OTP}
       </mj-text>
-      <mj-text color="#555">
-        This OTP will expire in 2 minutes.<br/>
-        If you didn't request this, please ignore this email.
+      <mj-text font-size="14px" color="#888888" font-style="italic" padding-top="20px" padding-bottom="24px">
+        This verification code will expire in 2 minutes.
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
+        If you did not request this code, please ignore this email or contact our support team if you have concerns.
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
+        <strong>Team BazarGhorr</strong>
       </mj-text>
     `,
-      "Password Reset Request"
+      "Reset your password"
     ),
 
   /**
@@ -143,17 +216,23 @@ const emailTemplates = {
   adminCreates: ({ firstName, email, generatedPassword }) =>
     emailTemplates.baseLayout(
       `
-      <mj-text>Hello ${firstName},</mj-text>
-      <mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
+        Hello ${firstName},
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="16px">
         Your admin account has been created successfully. Use the credentials below to log in:
       </mj-text>
-      <mj-text>
-        <strong>Email:</strong> ${email}<br/>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="8px">
+        <strong>Email:</strong> ${email}
+      </mj-text>
+      <mj-text font-size="15px" color="#4a4a4a" padding-bottom="24px">
         <strong>Password:</strong> ${generatedPassword}
       </mj-text>
-      <mj-divider border-color="#eaeaea" />
-      <mj-text font-size="14px" color="#555">
-        Please change your password after your first login.<br/>
+      <mj-text font-size="14px" color="#d9534f" padding-bottom="24px">
+        ⚠️ Please change your password after your first login for security purposes.
+      </mj-text>
+      <mj-divider border-color="#e0e0e0" border-width="1px" padding="24px 0" />
+      <mj-text font-size="14px" color="#666666">
         <strong>Team BazarGhorr</strong>
       </mj-text>
     `,

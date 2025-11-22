@@ -3,9 +3,9 @@ const { Role } = require("../models/role");
 const adminData = require("../seeders/admin.json").sales_account_creds;
 const { catchAsync } = require("../helpers/utils/catchAsync");
 const { ROLE } = require("../../config/constants/authConstant");
-const { sendEmail, renderTemplate } = require("./send.email");
-const { setNewPassword } = require("../services/auth");
-const FileService = require("../services/file.service");
+const { sendEmail, renderTemplate, sendNotification } = require("./sendEmail.service");
+const { setNewPassword } = require("./auth.service");
+const FileService = require("./file.service");
 const crypto = require("crypto");
 const templates = require("../templates/emailTemplates.mjml");
 
@@ -128,10 +128,19 @@ const createAdminService = async (body, files, creatorUser) => {
           generatedPassword,
         });
 
-        await sendEmail(email, "Your Vendor Account Details", html);
+        // Send both email and WhatsApp notification
+        await sendNotification(
+          email,
+          mobNo,
+          "Your Vendor Account Details",
+          html,
+          {
+            message: `Hello ${firstName}! Your admin account has been created. Email: ${email}, Password: ${generatedPassword}. Please change your password after first login.`,
+          }
+        );
       }
     } catch (emailErr) {
-      logger.error("Failed to send admin credentials email:", emailErr);
+      logger.error("Failed to send admin credentials notification:", emailErr);
       return {
         success: true,
         data: admin,
